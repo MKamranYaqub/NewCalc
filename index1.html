@@ -177,7 +177,7 @@
         pointer-events: none; /* avoid catching clicks */
       }
 
-      /* optional: slightly de‑emphasize the "blank" placeholders in columns */
+      /* optional: slightly de‑emphasize the “blank” placeholders in columns */
       .matrix .mRow.mNote .mValue {
         background: transparent;
         font-style: normal;
@@ -350,29 +350,39 @@
         color: #fff;
         font-weight: 700;
         cursor: pointer;
-        transition: background-color .2s ease, border-color .2s ease,
-                    box-shadow .15s ease, transform .15s ease;
       }
+:root {
+  --primary: #008891;
+  --primary-hover: #2DB0B9;   /* a touch darker */
+}
 
-      /* Hover state */
-      .primaryBtn:hover {
-        background: #2DB0B9;
-        border-color: #2DB0B9;
-        box-shadow: 0 6px 14px rgba(0, 136, 145, 0.25);
-        transform: translateY(-1px);
-      }
+/* Use the tokens on the base button */
+.primaryBtn {
+  background: var(--primary);
+  border-color: var(--primary);
+  transition: background-color .2s ease, border-color .2s ease,
+              box-shadow .15s ease, transform .15s ease;
+}
 
-      /* Pressed state */
-      .primaryBtn:active {
-        transform: translateY(0);
-        box-shadow: 0 3px 8px rgba(0, 136, 145, 0.2);
-      }
+/* Hover state */
+.primaryBtn:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+  box-shadow: 0 6px 14px rgba(0, 136, 145, 0.25);
+  transform: translateY(-1px);
+}
 
-      /* Keyboard focus */
-      .primaryBtn:focus-visible {
-        outline: 3px solid #94ECF2;
-        outline-offset: 2px;
-      }
+/* Pressed state */
+.primaryBtn:active {
+  transform: translateY(0);
+  box-shadow: 0 3px 8px rgba(0, 136, 145, 0.2);
+}
+
+/* Keyboard focus */
+.primaryBtn:focus-visible {
+  outline: 3px solid #94ECF2;
+  outline-offset: 2px;
+}
 
       .card > .profile-grid {
         margin-top: 18px;
