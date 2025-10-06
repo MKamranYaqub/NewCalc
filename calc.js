@@ -24,11 +24,27 @@ function SectionTitle({ children }) {
 }
 
 // Reusable Slider
-function SliderInput({ label, min, max, step, value, onChange, formatValue, style }) {
+function SliderInput({
+  label,
+  min,
+  max,
+  step,
+  value,
+  onChange,
+  formatValue,
+  style,
+}) {
   return (
     <div style={{ margin: "10px 0", ...style }}>
       {label != null && (
-        <label style={{ display: 'block', fontSize: 12, color: '#475569', marginBottom: 4 }}>
+        <label
+          style={{
+            display: "block",
+            fontSize: 12,
+            color: "#475569",
+            marginBottom: 4,
+          }}
+        >
           {label}: <b>{formatValue(value)}</b>
         </label>
       )}
@@ -39,7 +55,7 @@ function SliderInput({ label, min, max, step, value, onChange, formatValue, styl
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        style={{ width: '100%' }}
+        style={{ width: "100%" }}
       />
     </div>
   );
@@ -50,7 +66,6 @@ const MAX_ROLLED_MONTHS = window.MAX_ROLLED_MONTHS ?? 9;
 const MAX_DEFERRED_FIX = window.MAX_DEFERRED_FIX ?? 0.0125;
 const MAX_DEFERRED_TRACKER = window.MAX_DEFERRED_TRACKER ?? 0.02;
 const SHOW_FEE_COLS = window.SHOW_FEE_COLS ?? ["6", "4", "3", "2"];
-
 
 /* ------------------------------ UTIL FUNCTIONS ----------------------------- */
 const toNumber = (v) => {
@@ -68,7 +83,7 @@ const fmtMoney0 = (n) =>
 const fmtPct = (p, dp = 2) =>
   p || p === 0 ? `${(Number(p) * 100).toFixed(dp)}%` : "—";
 const parsePct = (s) => {
-  const v = String(s).trim().replace(/%/g, '');
+  const v = String(s).trim().replace(/%/g, "");
   const n = Number(v) / 100;
   return Number.isFinite(n) ? n : null;
 };
@@ -76,8 +91,8 @@ const parsePct = (s) => {
 /* Tier/LTV rule */
 function getMaxLTV(tier, flatAboveComm) {
   if (flatAboveComm === "Yes") {
-    if (tier === "Tier 2") return 0.60;
-    if (tier === "Tier 3") return 0.70;
+    if (tier === "Tier 2") return 0.6;
+    if (tier === "Tier 3") return 0.7;
   }
   return 0.75;
 }
@@ -101,11 +116,13 @@ function App() {
       ...(cfg.applicantQuestions || []),
       ...(cfg.adverseQuestions || []),
     ];
-    const entries = blocks.map(q => {
+    const entries = blocks.map((q) => {
       const first =
-        (Array.isArray(q.options) && q.options.length
-          ? (typeof q.options[0] === 'string' ? q.options[0] : q.options[0].label)
-          : "");
+        Array.isArray(q.options) && q.options.length
+          ? typeof q.options[0] === "string"
+            ? q.options[0]
+            : q.options[0].label
+          : "";
       return [q.key, first];
     });
     return Object.fromEntries(entries);
@@ -114,7 +131,7 @@ function App() {
   const [criteria, setCriteria] = useState(initialCriteria);
 
   const handleCriteriaChange = (key, value) => {
-    setCriteria(prev => ({ ...prev, [key]: value }));
+    setCriteria((prev) => ({ ...prev, [key]: value }));
   };
 
   const flatAboveCommVal = criteria.flatAboveComm || "No";
@@ -122,10 +139,12 @@ function App() {
   /* ------------------------------ Product/Inputs ---------------------------- */
   const [productType, setProductType] = useState("2yr Fix");
 
-  const [loanTypeRequired, setLoanTypeRequired] = useState("Max Optimum Gross Loan");
+  const [loanTypeRequired, setLoanTypeRequired] = useState(
+    "Max Optimum Gross Loan"
+  );
   const [specificNetLoan, setSpecificNetLoan] = useState("");
   const [specificLTV, setSpecificLTV] = useState(0.75);
-
+  const [specificGrossLoan, setSpecificGrossLoan] = useState("");
   // Manual & rate override
   const [manualSettings, setManualSettings] = useState({});
   const [rateOverrides, setRateOverrides] = useState({});
@@ -156,15 +175,17 @@ function App() {
     let t = 1;
 
     // Property + Applicant questions: use option tiers where provided
-    [...propQs, ...applQs].forEach(q => {
+    [...propQs, ...applQs].forEach((q) => {
       const val = criteria[q.key];
       // option can be string or {label,tier}
       let optTier = 1;
       if (Array.isArray(q.options)) {
-        const found = q.options.find(o => (typeof o === 'string' ? o === val : o.label === val));
-        if (found && typeof found !== 'string') {
+        const found = q.options.find((o) =>
+          typeof o === "string" ? o === val : o.label === val
+        );
+        if (found && typeof found !== "string") {
           optTier = Number(found.tier || 1);
-        } else if (found && typeof found === 'string') {
+        } else if (found && typeof found === "string") {
           // e.g. "Yes"/"No" without explicit tier
           // default 1 unless special-case; your config sets tiers for all that need it
           optTier = 1;
@@ -197,7 +218,7 @@ function App() {
   const isTracker = !!selected?.isMargin;
 
   const MIN_ICR_FIX = window.MIN_ICR?.Fix ?? 1.25;
-  const MIN_ICR_TRK = window.MIN_ICR?.Tracker ?? 1.30;
+  const MIN_ICR_TRK = window.MIN_ICR?.Tracker ?? 1.3;
   const MIN_LOAN = window.MIN_LOAN ?? 150000;
   const MAX_LOAN = window.MAX_LOAN ?? 3000000;
   const STANDARD_BBR = window.STANDARD_BBR ?? 0.04;
@@ -216,172 +237,212 @@ function App() {
     const mr = toNumber(monthlyRent);
     const pv = toNumber(propertyValue);
     const sn = toNumber(specificNetLoan);
-
+    const sg = toNumber(specificGrossLoan);
+    
     if (!mr) return false;
     if (loanTypeRequired === "Specific Net Loan") return !!sn && !!pv;
     if (loanTypeRequired === "Maximum LTV Loan") return !!pv;
+    if (loanTypeRequired === "Maximum LTV Loan") return !!pv;
+    if (loanTypeRequired === "Specific Gross Loan") return !!pv; // or (!!pv && !!sg)
+   return !!pv;
     return !!pv;
-  }, [monthlyRent, propertyValue, specificNetLoan, specificLTV, loanTypeRequired]);
+  }, [
+    monthlyRent,
+    propertyValue,
+    specificNetLoan,
+    specificLTV,
+    loanTypeRequired,
+  ]);
+  
+  const computeForCol = useCallback(
+    (colKey, manualRolled, manualDeferred, overriddenRate) => {
+      const base = selected?.[colKey];
+      if (base == null && !overriddenRate) return null;
 
-  const computeForCol = useCallback((colKey, manualRolled, manualDeferred, overriddenRate) => {
-    const base = selected?.[colKey];
-    if (base == null && !overriddenRate) return null;
+      const pv = toNumber(propertyValue);
+      const mr = toNumber(monthlyRent);
+      const sn = toNumber(specificNetLoan);
+      const sg = toNumber(specificGrossLoan);
+      const feePct = Number(colKey) / 100;
 
-    const pv = toNumber(propertyValue);
-    const mr = toNumber(monthlyRent);
-    const sn = toNumber(specificNetLoan);
-    const feePct = Number(colKey) / 100;
+      const minICR = productType.includes("Fix") ? MIN_ICR_FIX : MIN_ICR_TRK;
+      const maxLTVRule = getMaxLTV(tier, flatAboveCommVal);
 
-    const minICR = productType.includes("Fix") ? MIN_ICR_FIX : MIN_ICR_TRK;
-    const maxLTVRule = getMaxLTV(tier, flatAboveCommVal);
+      const grossLTVRuleCap = pv ? pv * maxLTVRule : Infinity;
 
-    const grossLTVRuleCap = pv ? pv * maxLTVRule : Infinity;
+      const specificLTVCap =
+        loanTypeRequired === "Maximum LTV Loan" && specificLTV != null
+          ? pv * specificLTV
+          : Infinity;
 
-    const specificLTVCap =
-      loanTypeRequired === "Maximum LTV Loan" && specificLTV != null
-        ? pv * specificLTV
-        : Infinity;
+      const ltvCap =
+        loanTypeRequired === "Maximum LTV Loan"
+          ? Math.min(specificLTVCap, grossLTVRuleCap)
+          : grossLTVRuleCap;
 
-    const ltvCap =
-      loanTypeRequired === "Maximum LTV Loan"
-        ? Math.min(specificLTVCap, grossLTVRuleCap)
-        : grossLTVRuleCap;
+      const termMonths = TERM_MONTHS[productType] ?? 24;
 
-    const termMonths = TERM_MONTHS[productType] ?? 24;
+      const deferredCap = isTracker ? MAX_DEFERRED_TRACKER : MAX_DEFERRED_FIX;
 
-    const deferredCap = isTracker ? MAX_DEFERRED_TRACKER : MAX_DEFERRED_FIX;
+      const actualBaseRate = overriddenRate != null ? overriddenRate : base;
 
-    const actualBaseRate = overriddenRate != null ? overriddenRate : base;
+      const displayRate = isTracker
+        ? actualBaseRate + STANDARD_BBR
+        : actualBaseRate;
+      const stressRate = isTracker ? actualBaseRate + STRESS_BBR : displayRate;
 
-    const displayRate = isTracker ? actualBaseRate + STANDARD_BBR : actualBaseRate;
-    const stressRate = isTracker ? actualBaseRate + STRESS_BBR : displayRate;
+      const isRateOverridden = overriddenRate != null;
 
-    const isRateOverridden = overriddenRate != null;
+      const evalCombo = (rolledMonths, d) => {
+  const monthsLeft = Math.max(termMonths - rolledMonths, 1);
+  const stressAdj = Math.max(stressRate - d, 1e-6);
 
-    const evalCombo = (rolledMonths, d) => {
-      const monthsLeft = Math.max(termMonths - rolledMonths, 1);
-      const stressAdj = Math.max(stressRate - d, 1e-6);
+  let grossRent = Infinity;
+  if (mr && stressAdj > 0) {
+    const annualRent = mr * termMonths;
+    grossRent = annualRent / (minICR * (stressAdj / 12) * monthsLeft);
+  }
 
-      let grossRent = Infinity;
-      if (mr && stressAdj > 0) {
-        const annualRent = mr * termMonths;
-        grossRent = annualRent / (minICR * (stressAdj / 12) * monthsLeft);
-      }
+  let grossFromNet = Infinity;
+  if (
+    loanTypeRequired === "Specific Net Loan" &&
+    sn != null &&
+    feePct < 1
+  ) {
+    const denom =
+      1 -
+      feePct -
+      (Math.max(displayRate - d, 0) / 12) * rolledMonths -
+      (d / 12) * termMonths;
+    if (denom > 0.0000001) {
+      grossFromNet = sn / denom;
+    }
+  }
 
-      let grossFromNet = Infinity;
-      if (loanTypeRequired === "Specific Net Loan" && sn != null && feePct < 1) {
-        const denom =
-          1 -
-          feePct -
-          ((Math.max(displayRate - d, 0)) / 12) * rolledMonths -
-          (d / 12) * termMonths;
-        if (denom > 0.0000001) {
-          grossFromNet = sn / denom;
-        }
-      }
+  // ✅ define eligibleGross first
+  let eligibleGross = Math.min(ltvCap, grossRent, MAX_LOAN);
 
-      let eligibleGross = Math.min(ltvCap, grossRent, MAX_LOAN);
+  // ✅ apply loan-type-specific logic
+  if (loanTypeRequired === "Specific Net Loan") {
+    eligibleGross = Math.min(eligibleGross, grossFromNet);
+  } else if (loanTypeRequired === "Specific Gross Loan" && sg != null && sg > 0) {
+    // Cap by user-entered gross loan, still respecting rent/LTV/ICR rules
+    eligibleGross = Math.min(eligibleGross, sg);
+  }
 
-      if (loanTypeRequired === "Specific Net Loan") {
-        eligibleGross = Math.min(eligibleGross, grossFromNet);
-      }
+  if (eligibleGross < MIN_LOAN - 1e-6) eligibleGross = 0;
 
-      if (eligibleGross < MIN_LOAN - 1e-6) eligibleGross = 0;
+  const payRateAdj = Math.max(displayRate - d, 0);
+  const feeAmt = eligibleGross * feePct;
+  const rolledAmt = eligibleGross * (payRateAdj / 12) * rolledMonths;
+  const deferredAmt = eligibleGross * (d / 12) * termMonths;
+  const net = eligibleGross - feeAmt - rolledAmt - deferredAmt;
+  const ltv = pv ? eligibleGross / pv : null;
 
-      const payRateAdj = Math.max(displayRate - d, 0);
-      const feeAmt = eligibleGross * feePct;
-      const rolledAmt = (eligibleGross * (payRateAdj / 12)) * rolledMonths;
-      const deferredAmt = (eligibleGross * (d / 12)) * termMonths;
-      const net = eligibleGross - feeAmt - rolledAmt - deferredAmt;
-      const ltv = pv ? eligibleGross / pv : null;
+  return {
+    gross: eligibleGross,
+    net,
+    feeAmt,
+    rolledAmt,
+    deferredAmt,
+    ltv,
+    rolledMonths,
+    d,
+    payRateAdj,
+  };
+};
 
-      return {
-        gross: eligibleGross,
-        net,
-        feeAmt,
-        rolledAmt,
-        deferredAmt,
-        ltv,
-        rolledMonths,
-        d,
-        payRateAdj,
-      };
-    };
+      let best = null;
 
-    let best = null;
+      if (manualRolled != null || manualDeferred != null) {
+        const rolled = Number.isFinite(manualRolled) ? manualRolled : 0;
+        const deferred = Number.isFinite(manualDeferred) ? manualDeferred : 0;
 
-    if (manualRolled != null || manualDeferred != null) {
-      const rolled = Number.isFinite(manualRolled) ? manualRolled : 0;
-      const deferred = Number.isFinite(manualDeferred) ? manualDeferred : 0;
+        const safeRolled = Math.max(0, Math.min(rolled, MAX_ROLLED_MONTHS));
+        const safeDeferred = Math.max(0, Math.min(deferred, deferredCap));
 
-      const safeRolled = Math.max(0, Math.min(rolled, MAX_ROLLED_MONTHS));
-      const safeDeferred = Math.max(0, Math.min(deferred, deferredCap));
-
-      let safeBest;
-      try {
-        safeBest = evalCombo(safeRolled, safeDeferred);
-        if (!safeBest || !isFinite(safeBest.gross)) {
+        let safeBest;
+        try {
+          safeBest = evalCombo(safeRolled, safeDeferred);
+          if (!safeBest || !isFinite(safeBest.gross)) {
+            safeBest = evalCombo(0, 0);
+          }
+        } catch (err) {
           safeBest = evalCombo(0, 0);
         }
-      } catch (err) {
-        safeBest = evalCombo(0, 0);
-      }
-      best = safeBest;
-    } else {
-      const maxRolled = Math.min(MAX_ROLLED_MONTHS, termMonths);
-      const step = 0.0001;
-      const steps = Math.max(1, Math.round(deferredCap / step));
+        best = safeBest;
+      } else {
+        const maxRolled = Math.min(MAX_ROLLED_MONTHS, termMonths);
+        const step = 0.0001;
+        const steps = Math.max(1, Math.round(deferredCap / step));
 
-      for (let r = 0; r <= maxRolled; r += 1) {
-        for (let j = 0; j <= steps; j += 1) {
-          const d = j * step;
-          const out = evalCombo(r, d);
-          if (!best || out.net > best.net) best = out;
+        for (let r = 0; r <= maxRolled; r += 1) {
+          for (let j = 0; j <= steps; j += 1) {
+            const d = j * step;
+            const out = evalCombo(r, d);
+            if (!best || out.net > best.net) best = out;
+          }
         }
       }
-    }
 
-    if (!best) return null;
+      if (!best) return null;
 
-    const fullRateText = isTracker
-      ? `${(actualBaseRate * 100).toFixed(2)}% + BBR`
-      : `${(displayRate * 100).toFixed(2)}%`;
-    const payRateText = isTracker
-      ? `${(best.payRateAdj * 100).toFixed(2)}% + BBR`
-      : `${(best.payRateAdj * 100).toFixed(2)}%`;
+      const fullRateText = isTracker
+        ? `${(actualBaseRate * 100).toFixed(2)}% + BBR`
+        : `${(displayRate * 100).toFixed(2)}%`;
+      const payRateText = isTracker
+        ? `${(best.payRateAdj * 100).toFixed(2)}% + BBR`
+        : `${(best.payRateAdj * 100).toFixed(2)}%`;
 
-    const belowMin = best.gross > 0 && best.gross < MIN_LOAN - 1e-6;
-    const hitMaxCap = Math.abs(best.gross - MAX_LOAN) < 1e-6;
+      const belowMin = best.gross > 0 && best.gross < MIN_LOAN - 1e-6;
+      const hitMaxCap = Math.abs(best.gross - MAX_LOAN) < 1e-6;
 
-    const ddAmount = best.gross * (best.payRateAdj / 12);
+      const ddAmount = best.gross * (best.payRateAdj / 12);
 
-    return {
-      productName: `${productType}, ${tier}`,
-      fullRateText,
-      actualRateUsed: actualBaseRate,
-      isRateOverridden,
-      payRateText,
-      deferredCapPct: best.d,
-      net: best.net,
-      gross: best.gross,
-      feeAmt: best.feeAmt,
-      rolled: best.rolledAmt,
-      deferred: best.deferredAmt,
-      ltv: best.ltv,
-      rolledMonths: best.rolledMonths,
-      directDebit: ddAmount,
-      maxLtvRule: getMaxLTV(tier, flatAboveCommVal),
-      termMonths,
-      belowMin,
-      hitMaxCap,
-      ddStartMonth: best.rolledMonths + 1,
-      isManual: manualRolled != null && manualDeferred != null
-    };
-  }, [
-    selected, propertyValue, monthlyRent, specificNetLoan, specificLTV, loanTypeRequired,
-    productType, tier, flatAboveCommVal, MIN_ICR_FIX, MIN_ICR_TRK, MIN_LOAN, MAX_LOAN,
-    STANDARD_BBR, STRESS_BBR, TERM_MONTHS, isTracker
-  ]);
+      return {
+        productName: `${productType}, ${tier}`,
+        fullRateText,
+        actualRateUsed: actualBaseRate,
+        isRateOverridden,
+        payRateText,
+        deferredCapPct: best.d,
+        net: best.net,
+        gross: best.gross,
+        feeAmt: best.feeAmt,
+        rolled: best.rolledAmt,
+        deferred: best.deferredAmt,
+        ltv: best.ltv,
+        rolledMonths: best.rolledMonths,
+        directDebit: ddAmount,
+        maxLtvRule: getMaxLTV(tier, flatAboveCommVal),
+        termMonths,
+        belowMin,
+        hitMaxCap,
+        ddStartMonth: best.rolledMonths + 1,
+        isManual: manualRolled != null && manualDeferred != null,
+      };
+    },
+    [
+      selected,
+      propertyValue,
+      monthlyRent,
+      specificNetLoan,
+      specificGrossLoan,
+      specificLTV,
+      loanTypeRequired,
+      productType,
+      tier,
+      flatAboveCommVal,
+      MIN_ICR_FIX,
+      MIN_ICR_TRK,
+      MIN_LOAN,
+      MAX_LOAN,
+      STANDARD_BBR,
+      STRESS_BBR,
+      TERM_MONTHS,
+      isTracker,
+    ]
+  );
 
   function computeBasicGrossForCol(colKey) {
     const base = selected?.[colKey];
@@ -390,6 +451,7 @@ function App() {
     const pv = toNumber(propertyValue);
     const mr = toNumber(monthlyRent);
     const sn = toNumber(specificNetLoan);
+    const sg = toNumber(specificGrossLoan); // ✅ added safely here
     const feePct = Number(colKey) / 100;
 
     const minICR = productType.includes("Fix") ? MIN_ICR_FIX : MIN_ICR_TRK;
@@ -429,9 +491,16 @@ function App() {
 
     let eligibleGross = Math.min(ltvCap, grossRent, MAX_LOAN);
 
-    if (loanTypeRequired === "Specific Net Loan") {
-      eligibleGross = Math.min(eligibleGross, grossFromNet);
-    }
+// Specific Net Loan logic
+if (loanTypeRequired === "Specific Net Loan") {
+  eligibleGross = Math.min(eligibleGross, grossFromNet);
+}
+// ✅ NEW: Specific Gross Loan logic
+else if (loanTypeRequired === "Specific Gross Loan" && sg != null && sg > 0) {
+  // Use the user’s entered gross loan, but still cap it by rent/LTV/ICR rules
+  eligibleGross = Math.min(eligibleGross, sg);
+}
+
 
     const ltvPct = pv ? Math.round((eligibleGross / pv) * 100) : null;
 
@@ -445,20 +514,34 @@ function App() {
     if (!canShowMatrix) return [];
     const pv = toNumber(propertyValue);
 
-    return SHOW_FEE_COLS
-      .map((colKey) => {
-        const manual = manualSettings[colKey];
-        const overriddenRate = rateOverrides[colKey];
-        const data = computeForCol(colKey, manual?.rolledMonths, manual?.deferredPct, overriddenRate);
-        if (!data) return null;
-        const netLtv = pv ? data.net / pv : null;
-        return { colKey, netLtv, ...data };
-      })
-      .filter(Boolean);
+    return SHOW_FEE_COLS.map((colKey) => {
+      const manual = manualSettings[colKey];
+      const overriddenRate = rateOverrides[colKey];
+      const data = computeForCol(
+        colKey,
+        manual?.rolledMonths,
+        manual?.deferredPct,
+        overriddenRate
+      );
+      if (!data) return null;
+      const netLtv = pv ? data.net / pv : null;
+      return { colKey, netLtv, ...data };
+    }).filter(Boolean);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    productType, tier, propertyValue, monthlyRent, specificNetLoan, specificLTV,
-    loanTypeRequired, flatAboveCommVal, canShowMatrix, computeForCol, manualSettings, rateOverrides
+    productType,
+    tier,
+    propertyValue,
+    monthlyRent,
+    specificNetLoan,
+    specificGrossLoan,
+    specificLTV,
+    loanTypeRequired,
+    flatAboveCommVal,
+    canShowMatrix,
+    computeForCol,
+    manualSettings,
+    rateOverrides,
   ]);
 
   const bestSummary = useMemo(() => {
@@ -480,20 +563,20 @@ function App() {
       }
     }
     return best;
-  }, [allColumnData, canShowMatrix, propertyValue]);
+  }, [allColumnData, canShowMatrix, propertyValue,specificGrossLoan]);
 
   /* ------------------- Rate override + manual settings handlers ------------------- */
   const handleRateInputChange = (colKey, value) => {
-    setTempRateInput(prev => ({ ...prev, [colKey]: value }));
+    setTempRateInput((prev) => ({ ...prev, [colKey]: value }));
   };
 
   const handleRateInputBlur = (colKey, value, originalRate) => {
-    setTempRateInput(prev => ({ ...prev, [colKey]: undefined }));
+    setTempRateInput((prev) => ({ ...prev, [colKey]: undefined }));
     const parsedRate = parsePct(value);
     if (parsedRate != null && Math.abs(parsedRate - originalRate) > 0.00001) {
-      setRateOverrides(prev => ({ ...prev, [colKey]: parsedRate }));
+      setRateOverrides((prev) => ({ ...prev, [colKey]: parsedRate }));
     } else {
-      setRateOverrides(prev => {
+      setRateOverrides((prev) => {
         const newState = { ...prev };
         delete newState[colKey];
         return newState;
@@ -502,26 +585,26 @@ function App() {
   };
 
   const handleRolledChange = (colKey, value) => {
-    setManualSettings(prev => ({
+    setManualSettings((prev) => ({
       ...prev,
-      [colKey]: { ...prev[colKey], rolledMonths: value }
+      [colKey]: { ...prev[colKey], rolledMonths: value },
     }));
   };
   const handleDeferredChange = (colKey, value) => {
-    setManualSettings(prev => ({
+    setManualSettings((prev) => ({
       ...prev,
-      [colKey]: { ...prev[colKey], deferredPct: value }
+      [colKey]: { ...prev[colKey], deferredPct: value },
     }));
   };
   const handleResetManual = (colKey) => {
-    setManualSettings(prev => {
+    setManualSettings((prev) => {
       const s = { ...prev };
       delete s[colKey];
       return s;
     });
   };
   const handleResetRateOverride = (colKey) => {
-    setRateOverrides(prev => {
+    setRateOverrides((prev) => {
       const s = { ...prev };
       delete s[colKey];
       return s;
@@ -534,11 +617,15 @@ function App() {
     setSendStatus(null);
 
     if (!canShowMatrix || !bestSummary) {
-      setValidationError("Please complete the calculation fields before sending email.");
+      setValidationError(
+        "Please complete the calculation fields before sending email."
+      );
       return;
     }
     if (!clientName.trim() || !clientPhone.trim() || !clientEmail.trim()) {
-      setValidationError("Please complete all client fields before sending email.");
+      setValidationError(
+        "Please complete all client fields before sending email."
+      );
       return;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+?\.[^\s@]+$/;
@@ -551,24 +638,29 @@ function App() {
     setSendStatus(null);
 
     try {
-      const zapierWebhookUrl = "https://hooks.zapier.com/hooks/catch/10082441/uhocm7m/";
+      const zapierWebhookUrl =
+        "https://hooks.zapier.com/hooks/catch/10082441/uhocm7m/";
 
-      const columnCalculations = allColumnData.map(d => ({
+      const columnCalculations = allColumnData.map((d) => ({
         feePercent: d.colKey,
-        ...d
+        ...d,
       }));
 
-      const basicGrossCalculations = SHOW_FEE_COLS
-        .map((k) => {
-          const d = computeBasicGrossForCol(k);
-          return d ? { feePercent: k, ...d } : null;
-        })
-        .filter(Boolean);
+      const basicGrossCalculations = SHOW_FEE_COLS.map((k) => {
+        const d = computeBasicGrossForCol(k);
+        return d ? { feePercent: k, ...d } : null;
+      }).filter(Boolean);
 
       const payload = {
-        requestId: `MFS-RESI-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        clientName, clientPhone, clientEmail,
-        propertyValue, monthlyRent, productType,
+        requestId: `MFS-RESI-${Date.now()}-${Math.random()
+          .toString(36)
+          .substr(2, 9)}`,
+        clientName,
+        clientPhone,
+        clientEmail,
+        propertyValue,
+        monthlyRent,
+        productType,
         loanTypeRequired,
         specificNetLoan,
         specificLTV,
@@ -603,11 +695,16 @@ function App() {
         try {
           const form = new URLSearchParams();
           for (const [k, v] of Object.entries(payload)) {
-            form.append(k, typeof v === "object" ? JSON.stringify(v) : String(v ?? ""));
+            form.append(
+              k,
+              typeof v === "object" ? JSON.stringify(v) : String(v ?? "")
+            );
           }
           const res2 = await fetch(zapierWebhookUrl, {
             method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+            },
             body: form.toString(),
           });
           if (res2.ok) success = true;
@@ -642,7 +739,10 @@ function App() {
   return (
     <div className="container">
       {/* --------------------- Property Details (full width) -------------------- */}
-      <div className="card" style={{ gridColumn: "1 / -1", position: "relative" }}>
+      <div
+        className="card"
+        style={{ gridColumn: "1 / -1", position: "relative" }}
+      >
         <div className="note" style={{ marginBottom: 8 }}>
           Tier is calculated automatically from the inputs below. Current:{" "}
           <b>{tier}</b>
@@ -652,31 +752,38 @@ function App() {
           <SectionTitle>Property Type</SectionTitle>
 
           {/* Property questions (dynamic) */}
-          {(window.CRITERIA_CONFIG?.propertyQuestions || []).map(q => (
-            <div className={`field ${q.key === "flatAboveComm" ? "flat-above-comm-field" : ""}`} key={q.key}>
+          {(window.CRITERIA_CONFIG?.propertyQuestions || []).map((q) => (
+            <div
+              className={`field ${
+                q.key === "flatAboveComm" ? "flat-above-comm-field" : ""
+              }`}
+              key={q.key}
+            >
               <label htmlFor={q.key}>{q.label}</label>
               <select
                 id={q.key}
                 value={criteria[q.key]}
                 onChange={(e) => handleCriteriaChange(q.key, e.target.value)}
               >
-                {q.options.map(o => (
-                  <option key={typeof o === 'string' ? o : o.label}>
-                    {typeof o === 'string' ? o : o.label}
+                {q.options.map((o) => (
+                  <option key={typeof o === "string" ? o : o.label}>
+                    {typeof o === "string" ? o : o.label}
                   </option>
                 ))}
               </select>
 
               {q.helper && (
-                <div style={{
-                  marginTop: 8,
-                  background: '#f1f5f9',
-                  color: '#475569',
-                  fontSize: 12,
-                  padding: '8px 10px',
-                  borderRadius: 8,
-                  textAlign: 'center'
-                }}>
+                <div
+                  style={{
+                    marginTop: 8,
+                    background: "#f1f5f9",
+                    color: "#475569",
+                    fontSize: 12,
+                    padding: "8px 10px",
+                    borderRadius: 8,
+                    textAlign: "center",
+                  }}
+                >
                   {q.helper}
                 </div>
               )}
@@ -686,7 +793,7 @@ function App() {
           <SectionTitle>Applicant Details</SectionTitle>
 
           {/* Applicant questions (dynamic) */}
-          {(window.CRITERIA_CONFIG?.applicantQuestions || []).map(q => (
+          {(window.CRITERIA_CONFIG?.applicantQuestions || []).map((q) => (
             <div className="field" key={q.key}>
               <label htmlFor={q.key}>{q.label}</label>
               <select
@@ -694,9 +801,9 @@ function App() {
                 value={criteria[q.key]}
                 onChange={(e) => handleCriteriaChange(q.key, e.target.value)}
               >
-                {q.options.map(o => (
-                  <option key={typeof o === 'string' ? o : o.label}>
-                    {typeof o === 'string' ? o : o.label}
+                {q.options.map((o) => (
+                  <option key={typeof o === "string" ? o : o.label}>
+                    {typeof o === "string" ? o : o.label}
                   </option>
                 ))}
               </select>
@@ -706,15 +813,17 @@ function App() {
           {/* Adverse follow-ups */}
           {criteria.adverse === "Yes" && (
             <>
-              {(window.CRITERIA_CONFIG?.adverseQuestions || []).map(q => (
+              {(window.CRITERIA_CONFIG?.adverseQuestions || []).map((q) => (
                 <div className="field" key={q.key}>
                   <label htmlFor={q.key}>{q.label}</label>
                   <select
                     id={q.key}
                     value={criteria[q.key]}
-                    onChange={(e) => handleCriteriaChange(q.key, e.target.value)}
+                    onChange={(e) =>
+                      handleCriteriaChange(q.key, e.target.value)
+                    }
                   >
-                    {q.options.map(o => (
+                    {q.options.map((o) => (
                       <option key={o}>{o}</option>
                     ))}
                   </select>
@@ -725,7 +834,10 @@ function App() {
 
           <SectionTitle>Property & Product</SectionTitle>
 
-          <div className="profile-grid property-product" style={{ gridColumn: "1 / -1" }}>
+          <div
+            className="profile-grid property-product"
+            style={{ gridColumn: "1 / -1" }}
+          >
             <div className="field">
               <label>Property Value</label>
               <input
@@ -748,15 +860,31 @@ function App() {
               />
             </div>
 
-            {/* Loan Type Required */}
             <div className="field">
               <label>Loan type required?</label>
-              <select value={loanTypeRequired} onChange={(e) => setLoanTypeRequired(e.target.value)}>
+              <select
+                value={loanTypeRequired}
+                onChange={(e) => setLoanTypeRequired(e.target.value)}
+              >
                 <option>Max Optimum Gross Loan</option>
                 <option>Specific Net Loan</option>
                 <option>Maximum LTV Loan</option>
+                <option>Specific Gross Loan</option> {/* new option */}
               </select>
             </div>
+          {/* Specific Gross Loan */}
+{loanTypeRequired === "Specific Gross Loan" && (
+  <div className="field">
+    <label>Specific Gross Loan (£)</label>
+    <input
+      type="number"
+      inputMode="decimal"
+      placeholder="e.g. 250,000"
+      value={specificGrossLoan}
+      onChange={(e) => setSpecificGrossLoan(e.target.value)}
+    />
+  </div>
+)}
 
             {/* Specific Net Loan */}
             {loanTypeRequired === "Specific Net Loan" && (
@@ -776,7 +904,9 @@ function App() {
             {loanTypeRequired === "Maximum LTV Loan" && (
               <div className="field">
                 <label>Specific LTV Cap</label>
-                <div style={{ fontSize: 12, color: '#475569', marginBottom: 4 }}>
+                <div
+                  style={{ fontSize: 12, color: "#475569", marginBottom: 4 }}
+                >
                   LTV: <b>{(specificLTV * 100).toFixed(2)}%</b>
                 </div>
                 <input
@@ -786,17 +916,19 @@ function App() {
                   step={0.005}
                   value={specificLTV}
                   onChange={(e) => setSpecificLTV(Number(e.target.value))}
-                  style={{ width: '100%' }}
+                  style={{ width: "100%" }}
                 />
-                <div style={{
-                  marginTop: 8,
-                  background: '#f1f5f9',
-                  color: '#475569',
-                  fontSize: 12,
-                  padding: '8px 10px',
-                  borderRadius: 8,
-                  textAlign: 'center'
-                }}>
+                <div
+                  style={{
+                    marginTop: 8,
+                    background: "#f1f5f9",
+                    color: "#475569",
+                    fontSize: 12,
+                    padding: "8px 10px",
+                    borderRadius: 8,
+                    textAlign: "center",
+                  }}
+                >
                   Max LTV for {tier} is {(maxLTVForTier * 100).toFixed(2)}%
                 </div>
               </div>
@@ -804,9 +936,14 @@ function App() {
 
             <div className="field">
               <label>Product Type</label>
-              <select value={productType} onChange={(e) => setProductType(e.target.value)}>
+              <select
+                value={productType}
+                onChange={(e) => setProductType(e.target.value)}
+              >
                 {window.PRODUCT_TYPES.map((p) => (
-                  <option key={p} value={p}>{p}</option>
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
                 ))}
               </select>
             </div>
@@ -861,17 +998,42 @@ function App() {
         </div>
 
         {validationError && (
-          <div style={{ marginTop: "16px", color: "#b91c1c", fontWeight: "500", textAlign: "center" }}>
+          <div
+            style={{
+              marginTop: "16px",
+              color: "#b91c1c",
+              fontWeight: "500",
+              textAlign: "center",
+            }}
+          >
             {validationError}
           </div>
         )}
         {sendStatus === "success" && (
-          <div style={{ marginTop: "16px", padding: "16px", background: "#f0fdf4", border: "1px solid #4ade80", color: "#166534", borderRadius: "8px" }}>
+          <div
+            style={{
+              marginTop: "16px",
+              padding: "16px",
+              background: "#f0fdf4",
+              border: "1px solid #4ade80",
+              color: "#166534",
+              borderRadius: "8px",
+            }}
+          >
             Email sent successfully!
           </div>
         )}
         {sendStatus === "error" && (
-          <div style={{ marginTop: "16px", padding: "16px", background: "#fff1f2", border: "1px solid #f87171", color: "#b91c1c", borderRadius: "8px" }}>
+          <div
+            style={{
+              marginTop: "16px",
+              padding: "16px",
+              background: "#fff1f2",
+              border: "1px solid #f87171",
+              color: "#b91c1c",
+              borderRadius: "8px",
+            }}
+          >
             Failed to send email. Please try again later.
           </div>
         )}
@@ -914,8 +1076,8 @@ function App() {
                 textAlign: "center",
               }}
             >
-              {bestSummary.grossStr} @ {bestSummary.grossLtvPct}% LTV, {productType},{" "}
-              {tier}, {Number(bestSummary.colKey)}% Fee
+              {bestSummary.grossStr} @ {bestSummary.grossLtvPct}% LTV,{" "}
+              {productType}, {tier}, {Number(bestSummary.colKey)}% Fee
             </div>
 
             <div
@@ -975,46 +1137,108 @@ function App() {
                   )}
 
                   {/* Labels */}
-                  <div className="matrixLabels" style={{ display: "flex", flexDirection: "column" }}>
+                  <div
+                    className="matrixLabels"
+                    style={{ display: "flex", flexDirection: "column" }}
+                  >
                     <div className="labelsHead"></div>
-                    <div className="mRow"><b></b></div>
-                    <div className="mRow"><b>Product Name</b></div>
-                    <div className="mRow"><b>Full Rate (Editable)</b></div>
-                    <div className="mRow"><b>Pay Rate</b></div>
-                    <div className="mRow"><b>Net Loan <span style={{ fontSize: "11px", fontWeight: 400 }}>(advanced day 1)</span></b></div>
-                    <div className="mRow"><b>Max Gross Loan<span style={{ fontSize: "11px", fontWeight: 400 }}>(paid at redemption)</span></b></div>
-                    <div className="mRow"><b>Rolled Months</b></div>
-                    <div className="mRow"><b>Deferred Adjustment</b></div>
-                    <div className="mRow"><b>Product Fee</b></div>
-                    <div className="mRow"><b>Rolled Months Interest</b></div>
-                    <div className="mRow"><b>Deferred Interest</b></div>
-                    <div className="mRow"><b>Direct Debit</b></div>
-                    <div className="mRow"><b>Revert Rate</b></div>
-                    <div className="mRow"><b>Total Term | ERC</b></div>
-                    <div className="mRow"><b>Max Product LTV</b></div>
+                    <div className="mRow">
+                      <b></b>
+                    </div>
+                    <div className="mRow">
+                      <b>Product Name</b>
+                    </div>
+                    <div className="mRow">
+                      <b>Full Rate (Editable)</b>
+                    </div>
+                    <div className="mRow">
+                      <b>Pay Rate</b>
+                    </div>
+                    <div className="mRow">
+                      <b>
+                        Net Loan{" "}
+                        <span style={{ fontSize: "11px", fontWeight: 400 }}>
+                          (advanced day 1)
+                        </span>
+                      </b>
+                    </div>
+                    <div className="mRow">
+                      <b>
+                        Max Gross Loan
+                        <span style={{ fontSize: "11px", fontWeight: 400 }}>
+                          (paid at redemption)
+                        </span>
+                      </b>
+                    </div>
+                    <div className="mRow">
+                      <b>Rolled Months</b>
+                    </div>
+                    <div className="mRow">
+                      <b>Deferred Adjustment</b>
+                    </div>
+                    <div className="mRow">
+                      <b>Product Fee</b>
+                    </div>
+                    <div className="mRow">
+                      <b>Rolled Months Interest</b>
+                    </div>
+                    <div className="mRow">
+                      <b>Deferred Interest</b>
+                    </div>
+                    <div className="mRow">
+                      <b>Direct Debit</b>
+                    </div>
+                    <div className="mRow">
+                      <b>Revert Rate</b>
+                    </div>
+                    <div className="mRow">
+                      <b>Total Term | ERC</b>
+                    </div>
+                    <div className="mRow">
+                      <b>Max Product LTV</b>
+                    </div>
                   </div>
 
                   {/* Columns */}
                   {colData.map((data, idx) => {
                     const colKey = data.colKey;
                     const headClass =
-                      idx === 0 ? "headGreen" : idx === 1 ? "headOrange" : idx === 2 ? "headTeal" : "headBlue";
+                      idx === 0
+                        ? "headGreen"
+                        : idx === 1
+                        ? "headOrange"
+                        : idx === 2
+                        ? "headTeal"
+                        : "headBlue";
 
                     const manual = manualSettings[colKey];
-                    const deferredCap = isTracker ? MAX_DEFERRED_TRACKER : MAX_DEFERRED_FIX;
+                    const deferredCap = isTracker
+                      ? MAX_DEFERRED_TRACKER
+                      : MAX_DEFERRED_FIX;
                     const deferredStep = 0.0001;
 
-                    const rateDisplayValue = tempRateInput[colKey] !== undefined
-                      ? tempRateInput[colKey]
-                      : `${(data.actualRateUsed * 100).toFixed(2)}%`;
+                    const rateDisplayValue =
+                      tempRateInput[colKey] !== undefined
+                        ? tempRateInput[colKey]
+                        : `${(data.actualRateUsed * 100).toFixed(2)}%`;
 
                     const isOverridden = data.isRateOverridden;
 
                     return (
-                      <div key={colKey} className="matrixCol" style={{ display: "flex", flexDirection: "column" }}>
-                        <div className={`matrixHead ${headClass}`}>BTL, {Number(colKey)}% Product Fee</div>
+                      <div
+                        key={colKey}
+                        className="matrixCol"
+                        style={{ display: "flex", flexDirection: "column" }}
+                      >
+                        <div className={`matrixHead ${headClass}`}>
+                          BTL, {Number(colKey)}% Product Fee
+                        </div>
 
-                        <div className="mRow"><div className="mValue" style={valueBoxStyle}>{data.productName}</div></div>
+                        <div className="mRow">
+                          <div className="mValue" style={valueBoxStyle}>
+                            {data.productName}
+                          </div>
+                        </div>
 
                         {/* Full Rate Input */}
                         <div className="mRow">
@@ -1022,28 +1246,38 @@ function App() {
                             className="mValue"
                             style={{
                               ...valueBoxStyle,
-                              background: '#fefce8',
-                              padding: '4px 10px',
-                              border: isOverridden ? '1px solid #fde047' : '1px solid #e2e8f0',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              alignItems: 'center',
-                              justifyContent: 'center'
+                              background: "#fefce8",
+                              padding: "4px 10px",
+                              border: isOverridden
+                                ? "1px solid #fde047"
+                                : "1px solid #e2e8f0",
+                              display: "flex",
+                              flexDirection: "column",
+                              alignItems: "center",
+                              justifyContent: "center",
                             }}
                           >
                             <input
                               type="text"
                               value={rateDisplayValue}
-                              onChange={(e) => handleRateInputChange(colKey, e.target.value)}
-                              onBlur={(e) => handleRateInputBlur(colKey, e.target.value, data.actualRateUsed)}
+                              onChange={(e) =>
+                                handleRateInputChange(colKey, e.target.value)
+                              }
+                              onBlur={(e) =>
+                                handleRateInputBlur(
+                                  colKey,
+                                  e.target.value,
+                                  data.actualRateUsed
+                                )
+                              }
                               placeholder={data.fullRateText}
                               style={{
-                                width: '100%',
-                                border: 'none',
-                                textAlign: 'center',
+                                width: "100%",
+                                border: "none",
+                                textAlign: "center",
                                 fontWeight: 700,
-                                background: 'transparent',
-                                color: isOverridden ? '#ca8a04' : '#1e293b',
+                                background: "transparent",
+                                color: isOverridden ? "#ca8a04" : "#1e293b",
                               }}
                             />
 
@@ -1068,18 +1302,28 @@ function App() {
                         <div className="mRow">
                           <div className="mValue" style={valueBoxStyle}>
                             {data.payRateText}
-                            <span style={{ fontWeight: 500, fontSize: 10, marginLeft: 6 }}>
-                              (using {(data.deferredCapPct * 100).toFixed(2)}% deferred)
+                            <span
+                              style={{
+                                fontWeight: 500,
+                                fontSize: 10,
+                                marginLeft: 6,
+                              }}
+                            >
+                              (using {(data.deferredCapPct * 100).toFixed(2)}%
+                              deferred)
                             </span>
                           </div>
                         </div>
 
                         <div className="mRow">
                           <div className="mValue" style={valueBoxStyle}>
-                            <span style={{ fontWeight: 700 }}>{fmtMoney0(data.net)}</span>
+                            <span style={{ fontWeight: 700 }}>
+                              {fmtMoney0(data.net)}
+                            </span>
                             {data.netLtv != null && (
                               <span style={{ fontWeight: 400 }}>
-                                {" "} @ {Math.round(data.netLtv * 100)}% LTV
+                                {" "}
+                                @ {Math.round(data.netLtv * 100)}% LTV
                               </span>
                             )}
                           </div>
@@ -1088,20 +1332,26 @@ function App() {
                         {/* Gross & sliders */}
                         <div className="mRow">
                           <div className="mValue" style={valueBoxStyle}>
-                            <span style={{ fontWeight: 700 }}>{fmtMoney0(data.gross)}</span>
+                            <span style={{ fontWeight: 700 }}>
+                              {fmtMoney0(data.gross)}
+                            </span>
                             {data.ltv != null && (
                               <span style={{ fontWeight: 400 }}>
-                                {" "} @ {Math.round(data.ltv * 100)}% LTV
+                                {" "}
+                                @ {Math.round(data.ltv * 100)}% LTV
                               </span>
                             )}
                           </div>
                         </div>
 
-                        <div className="mRow" style={{ alignItems: 'center' }}>
+                        <div className="mRow" style={{ alignItems: "center" }}>
                           <div
                             style={{
-                              width: '100%',
-                              background: manual?.rolledMonths != null ? "#fefce8" : "#fff",
+                              width: "100%",
+                              background:
+                                manual?.rolledMonths != null
+                                  ? "#fefce8"
+                                  : "#fff",
                               borderRadius: 8,
                               padding: "1px 1px",
                               marginTop: 4,
@@ -1114,18 +1364,23 @@ function App() {
                               max={Math.min(MAX_ROLLED_MONTHS, data.termMonths)}
                               step={1}
                               value={manual?.rolledMonths ?? data.rolledMonths}
-                              onChange={(val) => handleRolledChange(colKey, val)}
+                              onChange={(val) =>
+                                handleRolledChange(colKey, val)
+                              }
                               formatValue={(v) => `${v} months`}
                               style={{ margin: "4px 0" }}
                             />
                           </div>
                         </div>
 
-                        <div className="mRow" style={{ alignItems: 'center' }}>
+                        <div className="mRow" style={{ alignItems: "center" }}>
                           <div
                             style={{
-                              width: '100%',
-                              background: manual?.deferredPct != null ? "#fefce8" : "#fff",
+                              width: "100%",
+                              background:
+                                manual?.deferredPct != null
+                                  ? "#fefce8"
+                                  : "#fff",
                               borderRadius: 8,
                               padding: "1px 1px",
                               marginTop: 4,
@@ -1138,12 +1393,15 @@ function App() {
                               max={deferredCap}
                               step={deferredStep}
                               value={manual?.deferredPct ?? data.deferredCapPct}
-                              onChange={(val) => handleDeferredChange(colKey, val)}
+                              onChange={(val) =>
+                                handleDeferredChange(colKey, val)
+                              }
                               formatValue={(v) => fmtPct(v, 2)}
                               style={{ margin: "4px 0" }}
                             />
 
-                            {(manual?.rolledMonths != null || manual?.deferredPct != null) && (
+                            {(manual?.rolledMonths != null ||
+                              manual?.deferredPct != null) && (
                               <button
                                 onClick={() => handleResetManual(colKey)}
                                 style={{
@@ -1154,9 +1412,9 @@ function App() {
                                   cursor: "pointer",
                                   marginTop: 4,
                                   alignSelf: "end",
-                                  display: 'block',
-                                  width: '100%',
-                                  textAlign: 'right'
+                                  display: "block",
+                                  width: "100%",
+                                  textAlign: "right",
                                 }}
                               >
                                 (Reset to Optimum)
@@ -1165,13 +1423,45 @@ function App() {
                           </div>
                         </div>
 
-                        <div className="mRow"><div className="mValue" style={valueBoxStyle}>{fmtMoney0(data.feeAmt)} ({Number(colKey).toFixed(2)}%)</div></div>
-                        <div className="mRow"><div className="mValue" style={valueBoxStyle}>{fmtMoney0(data.rolled)} ({data.rolledMonths} months)</div></div>
-                        <div className="mRow"><div className="mValue" style={valueBoxStyle}>{fmtMoney0(data.deferred)} ({(data.deferredCapPct * 100).toFixed(2)}%)</div></div>
-                        <div className="mRow"><div className="mValue" style={valueBoxStyle}>{fmtMoney0(data.directDebit)} from month {data.ddStartMonth}</div></div>
-                        <div className="mRow"><div className="mValue" style={valueBoxStyle}>{formatRevertRate(tier)}</div></div>
-                        <div className="mRow"><div className="mValue" style={valueBoxStyle}>{TOTAL_TERM} years | {formatERC(productType)}</div></div>
-                        <div className="mRow"><div className="mValue" style={valueBoxStyle}>{(data.maxLtvRule * 100).toFixed(0)}%</div></div>
+                        <div className="mRow">
+                          <div className="mValue" style={valueBoxStyle}>
+                            {fmtMoney0(data.feeAmt)} (
+                            {Number(colKey).toFixed(2)}%)
+                          </div>
+                        </div>
+                        <div className="mRow">
+                          <div className="mValue" style={valueBoxStyle}>
+                            {fmtMoney0(data.rolled)} ({data.rolledMonths}{" "}
+                            months)
+                          </div>
+                        </div>
+                        <div className="mRow">
+                          <div className="mValue" style={valueBoxStyle}>
+                            {fmtMoney0(data.deferred)} (
+                            {(data.deferredCapPct * 100).toFixed(2)}%)
+                          </div>
+                        </div>
+                        <div className="mRow">
+                          <div className="mValue" style={valueBoxStyle}>
+                            {fmtMoney0(data.directDebit)} from month{" "}
+                            {data.ddStartMonth}
+                          </div>
+                        </div>
+                        <div className="mRow">
+                          <div className="mValue" style={valueBoxStyle}>
+                            {formatRevertRate(tier)}
+                          </div>
+                        </div>
+                        <div className="mRow">
+                          <div className="mValue" style={valueBoxStyle}>
+                            {TOTAL_TERM} years | {formatERC(productType)}
+                          </div>
+                        </div>
+                        <div className="mRow">
+                          <div className="mValue" style={valueBoxStyle}>
+                            {(data.maxLtvRule * 100).toFixed(0)}%
+                          </div>
+                        </div>
                       </div>
                     );
                   })}
@@ -1197,7 +1487,9 @@ function App() {
               marginBottom: 12,
             }}
           >
-            Results currently use optimum rolled and deferred interest for maximum net loan, *unless manually overridden by the sliders or the rate field.*
+            Results currently use optimum rolled and deferred interest for
+            maximum net loan, *unless manually overridden by the sliders or the
+            rate field.*
           </div>
 
           <div className="matrix" style={{ rowGap: 0 }}>
@@ -1210,7 +1502,10 @@ function App() {
                 background: "transparent",
               }}
             >
-              <div className="mRow" style={{ justifyContent: "center", color: "#475569" }}>
+              <div
+                className="mRow"
+                style={{ justifyContent: "center", color: "#475569" }}
+              >
                 <b>Basic Gross (no roll/deferred)</b>
               </div>
             </div>
@@ -1244,7 +1539,8 @@ function App() {
                     >
                       {fmtMoney0(d.grossBasic)}{" "}
                       <span style={{ fontWeight: 700 }}>
-                        @ {d.ltvPctBasic != null ? `${d.ltvPctBasic}% LTV` : "—"}
+                        @{" "}
+                        {d.ltvPctBasic != null ? `${d.ltvPctBasic}% LTV` : "—"}
                       </span>
                     </div>
                   </div>
@@ -1253,7 +1549,15 @@ function App() {
             })}
           </div>
 
-          <div style={{ gridColumn: "1 / -1", textAlign: "center", marginTop: 12, fontSize: 12, color: "#334155" }}>
+          <div
+            style={{
+              gridColumn: "1 / -1",
+              textAlign: "center",
+              marginTop: 12,
+              fontSize: 12,
+              color: "#334155",
+            }}
+          >
             <span style={{ marginRight: 16 }}>
               <b>MVR (Market Financial Solutions Variable Rate)</b> is currently{" "}
               {(CURRENT_MVR * 100).toFixed(2)}%
