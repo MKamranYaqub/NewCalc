@@ -136,76 +136,36 @@ function App() {
   const [ccjDefault, setCcjDefault] = useState("0 in 24");
   const [bankruptcy, setBankruptcy] = useState("Never");
 
-  // Tier
-  const tier = useMemo(() => {
-    const mapHmo = {
-      "No (Tier 1)": 1,
-      "Up to 6 beds (Tier 2)": 2,
-      "More than 6 beds (Tier 3)": 3,
-      No: 1,
-      "Up to 6 beds": 2,
-      "More than 6 beds": 3,
-    };
-    const mapMufb = {
-      "No (Tier 1)": 1,
-      "Up to 6 units (Tier 2)": 2,
-      "Less than 30 units (Tier 3)": 3,
-      No: 1,
-      "Up to 6 units": 2,
-      "Less than 30 units": 3,
-    };
-    const mapExp = {
-      "No (Tier 1)": 1,
-      "Yes - UK footprint (Tier 2)": 2,
-      "Yes - Without UK footprint (Tier 3)": 3,
-      No: 1,
-      "UK footprint": 2,
-      Yes: 3,
-    };
-    const yn3 = (v) => (v === "Yes" ? 3 : 1);
+  // Replace long tier calculation
+const tier = useMemo(() => {
+  let tierLevel = 1;
 
-    let t = Math.max(mapHmo[hmo] || 1, mapMufb[mufb] || 1, mapExp[expat] || 1);
+  // Check property & applicant questions
+  [...window.CRITERIA_CONFIG.propertyQuestions, ...window.CRITERIA_CONFIG.applicantQuestions].forEach(q => {
+    const val = eval(q.key); // gets the current state variable
+    const opt = q.options.find(o => o.label === val);
+    if (opt) tierLevel = Math.max(tierLevel, opt.tier);
+  });
 
-    if (yn3(holiday) === 3) t = 3;
-    if (yn3(offshore) === 3) t = 3;
+  // Flat above commercial rule
+  if (flatAboveComm === "Yes")
+    tierLevel = Math.max(tierLevel, window.CRITERIA_CONFIG.tierRules.flatAboveCommMinimum);
 
-    // Flat above commercial: at least Tier 2 (but allow Tier 3 if other rules push it)
-    if (flatAboveComm === "Yes") t = Math.max(t, 2);
+  // Adverse logic
+  if (adverse === "Yes") {
+    const advRules = window.CRITERIA_CONFIG.tierRules.adverseMapping;
+    const advTier = Math.max(
+      advRules.mortArrears[mortArrears] || 1,
+      advRules.unsArrears[unsArrears] || 1,
+      advRules.ccjDefault[ccjDefault] || 1,
+      advRules.bankruptcy[bankruptcy] || 1
+    );
+    tierLevel = Math.max(tierLevel, advTier);
+  }
 
-    if (ftl === "Yes") t = Math.max(t, 2);
+  return `Tier ${tierLevel}`;
+}, [hmo, mufb, expat, holiday, flatAboveComm, ftl, offshore, adverse, mortArrears, unsArrears, ccjDefault, bankruptcy]);
 
-    if (adverse === "Yes") {
-      const advMapMA = { "0 in 24": 1, "0 in 18": 2, "All considered by referral": 3 };
-      const advMapUA = { "0 in 24": 1, "0 in 12": 2, "All considered by referral": 3 };
-      const advMapCD = { "0 in 24": 1, "0 in 18": 2, "All considered by referral": 3 };
-      const advMapBank = {
-        Never: 1,
-        "All considered by referral": 3,
-      };
-      const adverseTier = Math.max(
-        advMapMA[mortArrears] || 1,
-        advMapUA[unsArrears] || 1,
-        advMapCD[ccjDefault] || 1,
-        advMapBank[bankruptcy] || 1
-      );
-      t = Math.max(t, adverseTier);
-    }
-
-    return t === 1 ? "Tier 1" : t === 2 ? "Tier 2" : "Tier 3";
-  }, [
-    hmo,
-    mufb,
-    expat,
-    holiday,
-    flatAboveComm,
-    ftl,
-    offshore,
-    adverse,
-    mortArrears,
-    unsArrears,
-    ccjDefault,
-    bankruptcy,
-  ]);
 
   const selected = window.RATES[tier]?.products?.[productType];
   const isTracker = !!selected?.isMargin;

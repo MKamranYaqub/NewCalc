@@ -2,7 +2,7 @@
 window.RATES = {
   "Tier 1": {
     products: {
-      "2yr Fix": { 6: 0.0589, 4: 0.0679, 3: 0.0739, 2: 0.0789 },
+      "2yr Fix": { 6: 0.0589,5: 0.0679, 4: 0.0679, 3: 0.0739, 2: 0.0789 },
       "3yr Fix": { 6: 0.0639, 4: 0.0709, 3: 0.0746, 2: 0.0779 },
       "2yr Tracker": {
         6: 0.0159,
@@ -44,7 +44,13 @@ window.RATES = {
 // --- Build the format calc.js expects: window.rates ---
 window.rates = {};
 window.PRODUCT_TYPES = ["2yr Fix", "3yr Fix", "2yr Tracker"];
-window.FEE_COLS = ["6", "4", "3", "2"];
+
+// --- UI & Calculator Constants ---
+window.MAX_ROLLED_MONTHS = 9;             // Max rolled months for optimisation sliders
+window.MAX_DEFERRED_FIX = 0.0125;         // 1.25%
+window.MAX_DEFERRED_TRACKER = 0.02;       // 2.00%
+window.SHOW_FEE_COLS = ["6", "4", "5", "3", "2"]; // Product fee columns (left to right order)
+
 
 // Transform RATES into rates format with term info
 Object.keys(window.RATES).forEach(tier => {
