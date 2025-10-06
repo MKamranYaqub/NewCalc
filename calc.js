@@ -873,6 +873,7 @@ else if (loanTypeRequired === "Specific Gross Loan" && sg != null && sg > 0) {
               </select>
             </div>
           {/* Specific Gross Loan */}
+{/* Specific Gross Loan */}
 {loanTypeRequired === "Specific Gross Loan" && (
   <div className="field">
     <label>Specific Gross Loan (£)</label>
@@ -883,8 +884,55 @@ else if (loanTypeRequired === "Specific Gross Loan" && sg != null && sg > 0) {
       value={specificGrossLoan}
       onChange={(e) => setSpecificGrossLoan(e.target.value)}
     />
+
+    {/* ✅ Live ICR & LTV Display with colour indicator */}
+    {specificGrossLoan && propertyValue && monthlyRent && (
+      <div
+        style={{
+          marginTop: 8,
+          background:
+            (() => {
+              const pv = toNumber(propertyValue);
+              const mr = toNumber(monthlyRent);
+              const sg = toNumber(specificGrossLoan);
+              const stressRate = productType.includes("Fix")
+                ? selected?.[SHOW_FEE_COLS[0]] ?? 0
+                : (selected?.[SHOW_FEE_COLS[0]] ?? 0) + STANDARD_BBR;
+              const icr = mr ? (mr * 12) / (sg * stressRate) : null;
+              const minICR = productType.includes("Fix")
+                ? MIN_ICR_FIX
+                : MIN_ICR_TRK;
+              return icr && icr < minICR ? "#fee2e2" : "#f1f5f9";
+            })(),
+          color: "#475569",
+          fontSize: 12,
+          padding: "8px 10px",
+          borderRadius: 8,
+          textAlign: "center",
+        }}
+      >
+        {(() => {
+          const pv = toNumber(propertyValue);
+          const mr = toNumber(monthlyRent);
+          const sg = toNumber(specificGrossLoan);
+          const stressRate = productType.includes("Fix")
+            ? selected?.[SHOW_FEE_COLS[0]] ?? 0
+            : (selected?.[SHOW_FEE_COLS[0]] ?? 0) + STANDARD_BBR;
+          const icr = mr ? (mr * 12) / (sg * stressRate) : null;
+          const ltv = pv ? sg / pv : null;
+          return (
+            <>
+              ICR:{" "}
+              <b>{icr && isFinite(icr) ? icr.toFixed(2)*100 : "—"}%</b> | LTV:{" "}
+              <b>{ltv && isFinite(ltv) ? (ltv * 100).toFixed(1) : "—"}%</b>
+            </>
+          );
+        })()}
+      </div>
+    )}
   </div>
 )}
+
 
             {/* Specific Net Loan */}
             {loanTypeRequired === "Specific Net Loan" && (
