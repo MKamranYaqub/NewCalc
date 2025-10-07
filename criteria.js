@@ -1,15 +1,7 @@
 // criteriaConfig.js
 window.CRITERIA_CONFIG = {
   propertyQuestions: [
-    {
-      key: "ptype",
-      label: "Property Type",
-      options: [
-        { label: "Residential", tier: 1 },
-        { label: "Commercial", tier: 1 },
-        { label: "Semi-Commercial", tier: 1 },
-      ],
-    },
+    
     {
       key: "hmo",
       label: "HMO",

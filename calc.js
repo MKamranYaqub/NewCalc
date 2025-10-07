@@ -847,7 +847,7 @@ function App() {
       
       {/* --------------------- Property Type (collapsible) -------------------- */}
       <Collapsible
-        title="🏠 Property Type"
+        title="🏠 Criteria"
         isOpen={showProperty}
         onToggle={() => setShowProperty((s) => !s)}
       >
@@ -889,16 +889,7 @@ function App() {
               )}
             </div>
           ))}
-        </div>
-      </Collapsible>
-
-      {/* --------------------- Applicant (collapsible) -------------------- */}
-      <Collapsible
-        title="👤 Applicant Details"
-        isOpen={showApplicant}
-        onToggle={() => setShowApplicant((s) => !s)}
-      >
-        <div className="profile-grid">
+        
           {(window.CRITERIA_CONFIG?.applicantQuestions || []).map((q) => (
             <div className="field" key={q.key}>
               <label htmlFor={q.key}>{q.label}</label>
@@ -1033,16 +1024,10 @@ function App() {
               ))}
             </select>
           </div>
-        </div>
-      </Collapsible>
+        
 
       {/* --------------------- Fees (collapsible) -------------------- */}
-      <Collapsible
-        title="💷 Fees"
-        isOpen={showFees}
-        onToggle={() => setShowFees((s) => !s)}
-      >
-        <div className="profile-grid">
+     
           <div className="field">
             <label>Proc Fee override(%)</label>
             <input
@@ -1087,9 +1072,9 @@ function App() {
               />
             </div>
           )}
-        </div>
-      </Collapsible>
-
+       
+       </div>
+       </Collapsible>
       {/* ---------------------- Client Details & Lead --------------------- */}
       <div className="card" style={{ gridColumn: "1 / -1" }}>
         <h4>Email this Quote</h4>
