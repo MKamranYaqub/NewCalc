@@ -243,5 +243,10 @@ window.CRITERIA_CONFIG = {
       "Tier 2": 60, // <-- This can cap Residential at 60% if Flat Above Comm is 'Yes' and tier is 2
       "Tier 3": 70,
     },
+    flatAboveCommOverrides: {
+  "Tier 2": 60,
+  "Tier 3": 70,
+}
+
   },
 };
