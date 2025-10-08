@@ -228,8 +228,8 @@
       const MAX_ROLLED_MONTHS = 9;
       const MAX_DEFERRED_FIX = 0.0125;
       const MAX_DEFERRED_TRACKER = 0.02;
-      const MIN_ICR_FIX = 1.45;
-      const MIN_ICR_TRK = 1.55;
+      const MIN_ICR_FIX = 1.25;
+      const MIN_ICR_TRK = 1.30;
       const TOTAL_TERM = 10;
   
       // Dynamic product types based on property type
