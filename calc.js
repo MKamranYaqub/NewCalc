@@ -920,7 +920,16 @@ const bestSummary = useMemo(() => {
           {/* ---------------- NEW TOP SECTION ---------------- */}
           <div className="card" style={{ gridColumn: "1 / -1" }}>
             <SectionTitle>Product Setup</SectionTitle>
-  
+            <div style={{
+  fontSize: "14px",
+  fontWeight: 500,
+  color: "#334155",
+  marginTop: "4px",
+  marginBottom: "12px"
+}}>
+  Based on the criteria, the current Tier is <strong>{tier}</strong>.
+</div>
+
             <div className="profile-grid">
               {/* Product Type */}
               <div className="field">
@@ -945,7 +954,7 @@ const bestSummary = useMemo(() => {
   
               {/* Retention */}
               <div className="field">
-                <label>Is this a retention loan?</label>
+                <label>Is This a Retention loan?</label>
                 <select value={isRetention} onChange={(e) => setIsRetention(e.target.value)}>
                   <option>No</option>
                   <option>Yes</option>
