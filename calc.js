@@ -31,26 +31,41 @@
     }
   
     function Collapsible({ title, isOpen, onToggle, children }) {
-      return (
-        <div className="card" style={{ gridColumn: "1 / -1" }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              cursor: "pointer",
-            }}
-            onClick={onToggle}
-          >
-            <h3 style={{ margin: 0 }}>{title}</h3>
-            <span style={{ fontSize: "18px", fontWeight: "bold" }}>
-              {isOpen ? "−" : "+"}
-            </span>
-          </div>
-          {isOpen && <div style={{ marginTop: "16px" }}>{children}</div>}
-        </div>
-      );
-    }
+  return (
+    <div className="card" style={{ gridColumn: "1 / -1" }}>
+      <div
+        onClick={onToggle}
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "12px 16px",
+          backgroundColor: "#f8fafc",
+          borderRadius: 8,
+          cursor: "pointer",
+          transition: "background 0.2s ease",
+          border: "1px solid #e2e8f0",
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#e2e8f0")}
+        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#f8fafc")}
+      >
+        <h3 style={{ margin: 0 }}>{title}</h3>
+        <span style={{ fontSize: "20px" }}>{isOpen ? "▾" : "▸"}</span>
+      </div>
+
+      <div
+        style={{
+          maxHeight: isOpen ? "2000px" : "0px",
+          overflow: "hidden",
+          transition: "max-height 0.3s ease",
+        }}
+      >
+        <div style={{ marginTop: isOpen ? "16px" : "0px" }}>{children}</div>
+      </div>
+    </div>
+  );
+}
+
   
     function SliderInput({ label, min, max, step, value, onChange, formatValue, style }) {
       return (
@@ -98,8 +113,18 @@
     };
   
     const formatRevertRate = (tier) => {
-      return tier === "Tier 1" ? "MVR - 1.00%" : "MVR - 0.50%";
-    };
+  switch (tier) {
+    case "Tier 1":
+      return "MVR ";
+    case "Tier 2":
+      return "MVR + 0.40%";
+    case "Tier 3":
+      return "MVR + 1.00%";
+    default:
+      return "MVR + 0.00%"; // fallback if no tier matches
+  }
+};
+
   
     const formatERC = (productType) => {
       if (productType.includes("2yr")) return "3% in year 1, 2% in year 2";
@@ -112,45 +137,57 @@
       if (isRetention !== "Yes") return { adjRate: baseRate, adjFee: feePct, adjProc: procFee };
   
       let rateAdj = 0;
-      if (retentionLtv === "65% LTV") rateAdj = -0.004;
-      else if (retentionLtv === "75% LTV") rateAdj = -0.003;
+      if (retentionLtv === "65") rateAdj = -0.004;
+      else if (retentionLtv === "75") rateAdj = -0.003;
   
       const adjRate = baseRate + rateAdj;
       const adjFee = Math.max(feePct - 0.005, 0);
       const adjProc = Math.max(procFee - 0.005, 0);
       return { adjRate, adjFee, adjProc };
     }
-    function getMaxLTV({ propertyType, isRetention, retentionLTV, propertyAnswers }) {
-      const rules = window.CRITERIA_CONFIG.maxLTVRules;
-    
-      let maxLTV;
-    
-      if (isRetention) {
-        maxLTV = rules.retention?.[propertyType]?.[retentionLTV] ?? 75;
-      } else {
-        maxLTV = rules.default?.[propertyType] ?? 75;
-      }
-    
-      // Check override for Flat Above Commercial (Residential only)
-      if (propertyType === "Residential" && propertyAnswers?.flatAboveComm) {
-        for (const tier in rules.flatAboveCommOverrides) {
-          if (propertyAnswers.flatAboveComm.includes(tier)) {
-            maxLTV = Math.min(maxLTV, rules.flatAboveCommOverrides[tier]);
-          }
-        }
-      }
-    
-      return maxLTV;
-    }
-    
+/* =====================================================================
+   Helper function to get Max LTV (Percentage)
+   Order: 1. Default LTV | 2. Retention Override | 3. Flat Above Comm Override
+   ===================================================================== */
+function getMaxLTV({ propertyType, isRetention, retentionLtv, propertyAnswers = {}, tier, productType }) {
+  const rules = window.CRITERIA_CONFIG.maxLTVRules;
+  let maxLTVPercent = rules.default?.[propertyType] ?? 75;
+
+  // 🟢 Retention override
+  if (isRetention === "Yes" && retentionLtv) {
+    const numeric = Number(String(retentionLtv).match(/\d+/)?.[0]);
+    const retentionOverride = rules.retention?.[propertyType]?.[numeric];
+    if (retentionOverride) maxLTVPercent = retentionOverride;
+  }
+
+  // 🟢 Flat above commercial override
+  const isFlatAboveComm =
+    propertyAnswers.flatAboveComm === "Yes" ||
+    propertyAnswers?.criteria?.flatAboveComm === "Yes";
+
+  if (
+    isRetention !== "Yes" &&
+    propertyType === "Residential" &&
+    isFlatAboveComm &&
+    rules.flatAboveCommOverrides?.[`Tier ${tier}`]
+  ) {
+    maxLTVPercent = Math.min(
+      maxLTVPercent,
+      rules.flatAboveCommOverrides[`Tier ${tier}`]
+    );
+  }
+
+  return maxLTVPercent / 100;
+}
+  
     /* ----------------------------------- App ----------------------------------- */
     function App() {
       /* --------------------------- NEW TOP-LEVEL STATES -------------------------- */
       const [mainProductType, setMainProductType] = useState("BTL");
       const [propertyType, setPropertyType] = useState("Residential");
       const [isRetention, setIsRetention] = useState("No");
-      const [retentionLtv, setRetentionLtv] = useState("65% LTV");
-      const [retentionLTV, setRetentionLTV] = useState(65); // default LTV
+      const [retentionLtv, setretentionLtv] = useState("65");
+      
       const [propertyAnswers, setPropertyAnswers] = useState({});
 
   
@@ -202,16 +239,17 @@
   
       // Reset criteria when property type changes
       useEffect(() => {
-        setCriteria(initializeCriteriaState(getCurrentCriteria()));
-      }, [propertyType]);
+  setCriteria(initializeCriteriaState(getCurrentCriteria()));
+}, [propertyType, isRetention, retentionLtv]);
+
   
       const currentCriteria = getCurrentCriteria();
   
       /* --------------------------- Collapsibles & Fees state -------------------------------- */
-      const [showProperty, setShowProperty] = useState(true);
-      const [showApplicant, setShowApplicant] = useState(true);
+      const [showProperty, setShowProperty] = useState(false);
+      const [showApplicant, setShowApplicant] = useState(false);
       const [showProduct, setShowProduct] = useState(true);
-      const [showFees, setShowFees] = useState(true);
+      const [showFees, setShowFees] = useState(false);
       const [procFeePct, setProcFeePct] = useState(1);
       const [brokerFeePct, setBrokerFeePct] = useState("");
       const [brokerFeeFlat, setBrokerFeeFlat] = useState("");
@@ -224,25 +262,35 @@
       const [tempFeeInput, setTempFeeInput] = useState({});
   
       /* --------------------------- Constants --------------------------- */
-      const SHOW_FEE_COLS = [6, 4, 3, 2];
-      const MAX_ROLLED_MONTHS = 9;
-      const MAX_DEFERRED_FIX = 0.0125;
-      const MAX_DEFERRED_TRACKER = 0.02;
-      const MIN_ICR_FIX = 1.25;
-      const MIN_ICR_TRK = 1.30;
-      const TOTAL_TERM = 10;
+      const SHOW_FEE_COLS = useMemo(() => {
+  if (isRetention === "Yes") {
+    if (propertyType === "Residential") {
+      return window.FEE_COLUMN_KEYS?.RetentionResidential || [5.5, 3.5, 2.5, 1.5];
+    } else {
+      return window.FEE_COLUMN_KEYS?.RetentionCommercial || [5.5, 3.5, 1.5];
+    }
+  }
+  return window.FEE_COLUMN_KEYS?.[propertyType] || [6, 4, 3, 2];
+}, [isRetention, propertyType]);
+
+      const {
+  MAX_ROLLED_MONTHS,
+  MAX_DEFERRED_FIX,
+  MAX_DEFERRED_TRACKER,
+  MIN_ICR_FIX,
+  MIN_ICR_TRK,
+  TOTAL_TERM
+} = useMemo(() => {
+  return window.LOAN_LIMITS?.[propertyType] || window.LOAN_LIMITS?.Residential;
+}, [propertyType]);
+
   
       // Dynamic product types based on property type
       const PRODUCT_TYPES = propertyType === "Residential" 
         ? (window.PRODUCT_TYPES || ["2yr Fix", "3yr Fix", "2yr Tracker"])
         : (window.PRODUCT_TYPES_Commercial || ["2yr Fix", "3yr Fix", "2yr Tracker"]);
   
-        const maxLTV = getMaxLTV({
-          propertyType,
-          isRetention,
-          retentionLTV,
-          propertyAnswers,
-        });
+        
   
       const cleanDigits = (v) => String(v).replace(/[^\d]/g, "");
       const isValidPhone = (v) => {
@@ -287,7 +335,7 @@
         }
   
         return `Tier ${maxTier}`;
-      }, [criteria, propertyType]);
+      }, [criteria, propertyType, isRetention, retentionLtv]);
   
       /* --------------------------- DYNAMIC RATE SOURCE --------------------------- */
       const selected = useMemo(() => {
@@ -298,7 +346,7 @@
   
         if (isRetention === "Yes") {
           const retentionRates =
-            retentionLtv === "65% LTV"
+            retentionLtv === "65"
               ? window.RATES_Retention_65
               : window.RATES_Retention_75;
   
@@ -351,21 +399,23 @@
           const feePctDec = feePct / 100;
   
           const minICR = productType.includes("Fix") ? MIN_ICR_FIX : MIN_ICR_TRK;
-          const maxLTVRule = getMaxLTV(tier, flatAboveCommVal);
-  
-          const grossLTVRuleCap = pv ? pv * maxLTVRule : Infinity;
-  
-          const specificLTVCap =
-            loanTypeRequired === "Maximum LTV Loan" && specificLTV != null
-              ? pv * specificLTV
-              : Infinity;
-  
-          const maxLTV = getMaxLTV({ propertyType, isRetention, retentionLTV, propertyAnswers });
-        const ltvCap = Math.round((maxLTV / 100) * pv);
-            loanTypeRequired === "Maximum LTV Loan"
-              ? Math.min(specificLTVCap, grossLTVRuleCap)
-              : grossLTVRuleCap;
-  
+
+// 1. Get the Max LTV percentage using the single, correct function signature
+const maxLTVPercent = getMaxLTV({ propertyType, isRetention, retentionLtv, propertyAnswers: criteria,  tier, productType });
+
+// 2. Calculate the maximum loan amount cap based on the rules
+const rulesBasedLTVCap = pv ? Math.round(maxLTVPercent * pv) : Infinity;
+const isFlatAboveComm = propertyAnswers.flatAboveComm === "Yes";
+const specificLTVCap =
+    loanTypeRequired === "Maximum LTV Loan" && specificLTV != null
+      ? pv * specificLTV
+      : Infinity;
+
+// 3. Determine the final LTV cap, correctly using the rulesBasedLTVCap
+const ltvCap = loanTypeRequired === "Maximum LTV Loan"
+  ? Math.min(specificLTVCap, rulesBasedLTVCap)
+  : rulesBasedLTVCap;
+
           const termMonths = TERM_MONTHS[productType] ?? 24;
   
           const deferredCap = isTracker ? MAX_DEFERRED_TRACKER : MAX_DEFERRED_FIX;
@@ -406,11 +456,15 @@
             }
   
             let eligibleGross = Math.min(ltvCap, grossRent, MAX_LOAN);
+
+        if (loanTypeRequired === "Specific Gross Loan" && sg != null && sg > 0) {
+          eligibleGross = Math.min(eligibleGross, sg, ltvCap);
+        }
   
             if (loanTypeRequired === "Specific Net Loan") {
               eligibleGross = Math.min(eligibleGross, grossFromNet);
             } else if (loanTypeRequired === "Specific Gross Loan" && sg != null && sg > 0) {
-              eligibleGross = Math.min(eligibleGross, sg);
+              eligibleGross = Math.min(eligibleGross, sg, ltvCap);
             }
   
             if (eligibleGross < MIN_LOAN - 1e-6) eligibleGross = 0;
@@ -506,7 +560,7 @@
             ltv: best.ltv,
             rolledMonths: best.rolledMonths,
             directDebit: ddAmount,
-            maxLtvRule: getMaxLTV(tier, flatAboveCommVal),
+            maxLtvRule: maxLTVPercent, 
             termMonths,
             belowMin,
             hitMaxCap,
@@ -539,20 +593,22 @@
             : Number(colKey) / 100;
   
         const minICR = productType.includes("Fix") ? MIN_ICR_FIX : MIN_ICR_TRK;
-        const maxLTVRule = getMaxLTV(tier, flatAboveCommVal);
-  
-        const grossLTVRuleCap = pv ? pv * maxLTVRule : Infinity;
-  
-        const specificLTVCap =
-          loanTypeRequired === "Maximum LTV Loan" && specificLTV != null
-            ? pv * specificLTV
-            : Infinity;
-  
-        const maxLTV = getMaxLTV({ propertyType, isRetention, retentionLTV, propertyAnswers });
-        const ltvCap = Math.round((maxLTV / 100) * pv);
-          loanTypeRequired === "Maximum LTV Loan"
-            ? Math.min(specificLTVCap, grossLTVRuleCap)
-            : grossLTVRuleCap;
+
+// 1. Get the Max LTV percentage using the single, correct function signature
+const maxLTVPercent = getMaxLTV({ propertyType, isRetention, retentionLtv, propertyAnswers: criteria,  tier, productType });
+
+// 2. Calculate the maximum loan amount cap based on the rules
+const rulesBasedLTVCap = pv ? Math.round(maxLTVPercent * pv) : Infinity;
+
+const specificLTVCap =
+    loanTypeRequired === "Maximum LTV Loan" && specificLTV != null
+      ? pv * specificLTV
+      : Infinity;
+
+// 3. Determine the final LTV cap, correctly using the rulesBasedLTVCap
+const ltvCap = loanTypeRequired === "Maximum LTV Loan"
+  ? Math.min(specificLTVCap, rulesBasedLTVCap)
+  : rulesBasedLTVCap;
   
         const displayRate = isTracker ? base + STANDARD_BBR : base;
         const stressRate = isTracker ? base + STRESS_BBR : displayRate;
@@ -575,11 +631,15 @@
         }
   
         let eligibleGross = Math.min(ltvCap, grossRent, MAX_LOAN);
+
+        if (loanTypeRequired === "Specific Gross Loan" && sg != null && sg > 0) {
+          eligibleGross = Math.min(eligibleGross, sg, ltvCap);
+        }
   
         if (loanTypeRequired === "Specific Net Loan") {
           eligibleGross = Math.min(eligibleGross, grossFromNet);
         } else if (loanTypeRequired === "Specific Gross Loan" && sg != null && sg > 0) {
-          eligibleGross = Math.min(eligibleGross, sg);
+          eligibleGross = Math.min(eligibleGross, sg, ltvCap);
         }
   
         const procFeeDec = Number(procFeePct || 0) / 100;
@@ -618,7 +678,21 @@
         }).filter(Boolean);
       }, [canShowMatrix, computeForCol, manualSettings, rateOverrides, propertyValue]);
   
-      const bestSummary = useMemo(() => {
+      
+  const maxLTV = useMemo(() => {
+  return getMaxLTV({
+    propertyType,
+    isRetention,
+    retentionLtv,
+    propertyAnswers: criteria, 
+    tier,
+    productType,
+  });
+}, [propertyType, isRetention, retentionLtv, criteria, tier, productType]);
+
+
+
+const bestSummary = useMemo(() => {
         if (!canShowMatrix || !allColumnData.length) return null;
         const pv = toNumber(propertyValue) || 0;
   
@@ -838,7 +912,7 @@
       };
   
       const deferredCap = isTracker ? MAX_DEFERRED_TRACKER : MAX_DEFERRED_FIX;
-      const maxLTVForTier = getMaxLTV(tier, flatAboveCommVal);
+      const maxLTVForTier = getMaxLTV({ propertyType, isRetention, retentionLtv, propertyAnswers: criteria,  tier, productType });
   
       /* ----------------------------------- UI ----------------------------------- */
       return (
@@ -862,6 +936,7 @@
               <div className="field">
                 <label>Property Type</label>
                 <select value={propertyType} onChange={(e) => setPropertyType(e.target.value)}>
+                  
                   <option>Residential</option>
                   <option>Commercial</option>
                   <option>Semi-Commercial</option>
@@ -881,9 +956,9 @@
               {isRetention === "Yes" && (
                 <div className="field">
                   <label>Retention LTV Range</label>
-                  <select value={retentionLtv} onChange={(e) => setRetentionLtv(e.target.value)}>
-                    <option>65% LTV</option>
-                    <option>75% LTV</option>
+                  <select value={retentionLtv} onChange={(e) => setretentionLtv(e.target.value)}>
+                    <option>65</option>
+                    <option>75</option>
                   </select>
                 </div>
               )}
