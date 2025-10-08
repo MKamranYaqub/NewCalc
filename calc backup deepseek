@@ -120,29 +120,7 @@
       const adjProc = Math.max(procFee - 0.005, 0);
       return { adjRate, adjFee, adjProc };
     }
-    function getMaxLTV({ propertyType, isRetention, retentionLTV, propertyAnswers }) {
-      const rules = window.CRITERIA_CONFIG.maxLTVRules;
-    
-      let maxLTV;
-    
-      if (isRetention) {
-        maxLTV = rules.retention?.[propertyType]?.[retentionLTV] ?? 75;
-      } else {
-        maxLTV = rules.default?.[propertyType] ?? 75;
-      }
-    
-      // Check override for Flat Above Commercial (Residential only)
-      if (propertyType === "Residential" && propertyAnswers?.flatAboveComm) {
-        for (const tier in rules.flatAboveCommOverrides) {
-          if (propertyAnswers.flatAboveComm.includes(tier)) {
-            maxLTV = Math.min(maxLTV, rules.flatAboveCommOverrides[tier]);
-          }
-        }
-      }
-    
-      return maxLTV;
-    }
-    
+  
     /* ----------------------------------- App ----------------------------------- */
     function App() {
       /* --------------------------- NEW TOP-LEVEL STATES -------------------------- */
@@ -150,9 +128,6 @@
       const [propertyType, setPropertyType] = useState("Residential");
       const [isRetention, setIsRetention] = useState("No");
       const [retentionLtv, setRetentionLtv] = useState("65% LTV");
-      const [retentionLTV, setRetentionLTV] = useState(65); // default LTV
-      const [propertyAnswers, setPropertyAnswers] = useState({});
-
   
       /* --------------------------- EXISTING STATES -------------------------- */
       const [productType, setProductType] = useState("2yr Fix");
@@ -162,9 +137,8 @@
       const [clientEmail, setClientEmail] = useState("");
       const [sending, setSending] = useState(false);
       const [sendStatus, setSendStatus] = useState(null);
-      const [propertyValue, setPropertyValue] = useState("1000000");
-
-      const [monthlyRent, setMonthlyRent] = useState("3000");
+      const [propertyValue, setPropertyValue] = useState("");
+      const [monthlyRent, setMonthlyRent] = useState("");
       const [validationError, setValidationError] = useState("");
       const [loanTypeRequired, setLoanTypeRequired] = useState("Max Optimum Gross Loan");
       const [specificLTV, setSpecificLTV] = useState(0.75);
@@ -225,8 +199,8 @@
   
       /* --------------------------- Constants --------------------------- */
       const SHOW_FEE_COLS = [6, 4, 3, 2];
-      const MAX_ROLLED_MONTHS = 9;
-      const MAX_DEFERRED_FIX = 0.0125;
+      const MAX_ROLLED_MONTHS = 6;
+      const MAX_DEFERRED_FIX = 0.03;
       const MAX_DEFERRED_TRACKER = 0.02;
       const MIN_ICR_FIX = 1.45;
       const MIN_ICR_TRK = 1.55;
@@ -237,12 +211,12 @@
         ? (window.PRODUCT_TYPES || ["2yr Fix", "3yr Fix", "2yr Tracker"])
         : (window.PRODUCT_TYPES_Commercial || ["2yr Fix", "3yr Fix", "2yr Tracker"]);
   
-        const maxLTV = getMaxLTV({
-          propertyType,
-          isRetention,
-          retentionLTV,
-          propertyAnswers,
-        });
+      const getMaxLTV = (tier, flatAboveComm) => {
+        if (flatAboveComm === "Yes") return 0.65;
+        if (tier === "Tier 1") return 0.75;
+        if (tier === "Tier 2") return 0.70;
+        return 0.65;
+      };
   
       const cleanDigits = (v) => String(v).replace(/[^\d]/g, "");
       const isValidPhone = (v) => {
@@ -360,8 +334,7 @@
               ? pv * specificLTV
               : Infinity;
   
-          const maxLTV = getMaxLTV({ propertyType, isRetention, retentionLTV, propertyAnswers });
-        const ltvCap = Math.round((maxLTV / 100) * pv);
+          const ltvCap =
             loanTypeRequired === "Maximum LTV Loan"
               ? Math.min(specificLTVCap, grossLTVRuleCap)
               : grossLTVRuleCap;
@@ -548,8 +521,7 @@
             ? pv * specificLTV
             : Infinity;
   
-        const maxLTV = getMaxLTV({ propertyType, isRetention, retentionLTV, propertyAnswers });
-        const ltvCap = Math.round((maxLTV / 100) * pv);
+        const ltvCap =
           loanTypeRequired === "Maximum LTV Loan"
             ? Math.min(specificLTVCap, grossLTVRuleCap)
             : grossLTVRuleCap;
