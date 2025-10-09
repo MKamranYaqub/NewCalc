@@ -1,7 +1,6 @@
 /* ============================
    RATES.JS — Full Retention Support (Resi Tiers 1-3 + Commercial)
    ============================ */
-
 /* ---------- Residential Base Rates ---------- */
 window.RATES = {
   "Tier 1": {
@@ -212,3 +211,85 @@ window.LOAN_LIMITS = {
     TOTAL_TERM: 10,
   },
 };
+
+/*********************** BTL Core (from MFS official rates) ***********************/
+window.RATES_Core = {
+  "Tier 1": {
+    products: {
+      "2yr Fix": { 6: 0.0529, 4: 0.0619, 3: 0.0679, 2: 0.0729 },
+      "3yr Fix": { 6: 0.0579, 4: 0.0649, 3: 0.0686, 2: 0.0719 },
+      "2yr Tracker": {
+        6: 0.0149, 4: 0.0249, 3: 0.0304, 2: 0.0354,
+        isMargin: true,
+      },
+    },
+  },
+  "Tier 2": {
+    products: {
+      "2yr Fix": { 6: 0.0589, 4: 0.0679, 3: 0.0739, 2: 0.0789 },
+      "3yr Fix": { 6: 0.0639, 4: 0.0709, 3: 0.0746, 2: 0.0779 },
+      "2yr Tracker": {
+        6: 0.0169, 4: 0.0269, 3: 0.0324, 2: 0.0374,
+        isMargin: true,
+      },
+    },
+  },
+};
+window.CORE_FLOOR_RATE = 0.055; // 5.5%
+
+/*********************** BTL Core Retention Rates (65% & 75%) ***********************/
+// Same rate values as Core base; only fee bands differ (5.5 / 3.5 / 2.5 / 1.5)
+
+window.RATES_Core_Retention_65 = {
+  "Tier 1": {
+    products: {
+      "2yr Fix": { 5.5: 0.0529, 3.5: 0.0619, 2.5: 0.0679, 1.5: 0.0729 },
+      "3yr Fix": { 5.5: 0.0579, 3.5: 0.0649, 2.5: 0.0686, 1.5: 0.0719 },
+      "2yr Tracker": {
+        5.5: 0.0149, 3.5: 0.0249, 2.5: 0.0304, 1.5: 0.0354,
+        isMargin: true,
+      },
+    },
+  },
+  "Tier 2": {
+    products: {
+      "2yr Fix": { 5.5: 0.0589, 3.5: 0.0679, 2.5: 0.0739, 1.5: 0.0789 },
+      "3yr Fix": { 5.5: 0.0639, 3.5: 0.0709, 2.5: 0.0746, 1.5: 0.0779 },
+      "2yr Tracker": {
+        5.5: 0.0169, 3.5: 0.0269, 2.5: 0.0324, 1.5: 0.0374,
+        isMargin: true,
+      },
+    },
+  },
+};
+
+window.RATES_Core_Retention_75 = {
+  "Tier 1": {
+    products: {
+      "2yr Fix": { 5.5: 0.0529, 3.5: 0.0619, 2.5: 0.0679, 1.5: 0.0729 },
+      "3yr Fix": { 5.5: 0.0579, 3.5: 0.0649, 2.5: 0.0686, 1.5: 0.0719 },
+      "2yr Tracker": {
+        5.5: 0.0149, 3.5: 0.0249, 2.5: 0.0304, 1.5: 0.0354,
+        isMargin: true,
+      },
+    },
+  },
+  "Tier 2": {
+    products: {
+      "2yr Fix": { 5.5: 0.0589, 3.5: 0.0679, 2.5: 0.0739, 1.5: 0.0789 },
+      "3yr Fix": { 5.5: 0.0639, 3.5: 0.0709, 2.5: 0.0746, 1.5: 0.0779 },
+      "2yr Tracker": {
+        5.5: 0.0169, 3.5: 0.0269, 2.5: 0.0324, 1.5: 0.0374,
+        isMargin: true,
+      },
+    },
+  },
+};
+
+// Fee column keys for Core Retention
+window.FEE_COLUMN_KEYS.Core_Retention_65 = [5.5, 3.5, 2.5, 1.5];
+window.FEE_COLUMN_KEYS.Core_Retention_75 = [5.5, 3.5, 2.5, 1.5];
+
+
+// Helper: is a property type eligible for Core?
+window.isCoreEligible = function(propertyType){ return propertyType === "Residential"; }

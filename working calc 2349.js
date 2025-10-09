@@ -116,8 +116,7 @@
   }
 
   /* ============ constants ============ */
-  const CORE_FLOOR_RATE = window.CORE_FLOOR_RATE || 0.055;
- // 5.5%
+  const CORE_FLOOR_RATE = 0.055; // 5.5%
 
   function App() {
     /* ---------- top-level selections ---------- */
@@ -1182,7 +1181,8 @@
                 Proc Fee (%){" "}
                 {isRetention === "Yes" && (
                   <span style={{ color: "#0ea5e9", fontWeight: 700 }}>
-                    </span>
+                    (auto-set to 0.50% for Retention)
+                  </span>
                 )}
               </label>
 
