@@ -33,7 +33,7 @@ select:focus, input[type="number"]:focus, input[type="text"]:focus, input[type="
 @media (max-width: 1024px){ .profile-grid.property-product{ grid-template-columns: 1fr; } }
 
 
-.matrix{ display:grid; grid-template-columns:200px repeat(4,1fr); gap:0; }
+.matrix{ display:grid; grid-template-columns: 200px repeat(auto-fit, minmax(220px, 1fr)); gap:0; }
 .matrix .matrixLabels, .matrix .matrixCol{ display:grid; grid-template-rows: 30px 52px 52px 52px 52px 52px 52px 52px 52px 52px 52px 52px 52px 52px 52px; border:2px solid var(--border); border-radius:12px; overflow:hidden; background:#fff; }
 .matrix .labelsHead{ background:#f8fafc; border-bottom:1px solid var(--border); }
 .matrix .matrixHead{ padding:10px 12px; font-weight:800; color:#fff; text-align:center; text-transform:uppercase; letter-spacing:.02em; font-size:14px; display:flex; align-items:center; justify-content:center; border-bottom:1px solid rgba(0,0,0,.05); }
