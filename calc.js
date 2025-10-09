@@ -604,7 +604,7 @@
           : `${(displayRate * 100).toFixed(2)}%`;
 
         const payRateText = isTracker
-          ? `${(best.payRateAdj * 100).toFixed(2)}% + BBR adj`
+          ? `${(best.payRateAdj * 100).toFixed(2)}% + BBR`
           : `${(best.payRateAdj * 100).toFixed(2)}%`;
 
         const ddAmount = best.gross * (best.payRateAdj / 12);
