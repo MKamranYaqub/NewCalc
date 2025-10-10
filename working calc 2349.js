@@ -116,8 +116,7 @@
   }
 
   /* ============ constants ============ */
-  const CORE_FLOOR_RATE = window.CORE_FLOOR_RATE || 0.055;
- // 5.5%
+  const CORE_FLOOR_RATE = 0.055; // 5.5%
 
   function App() {
     /* ---------- top-level selections ---------- */
@@ -604,7 +603,7 @@
           : `${(displayRate * 100).toFixed(2)}%`;
 
         const payRateText = isTracker
-          ? `${(best.payRateAdj * 100).toFixed(2)}% + BBR`
+          ? `${(best.payRateAdj * 100).toFixed(2)}% + BBR adj`
           : `${(best.payRateAdj * 100).toFixed(2)}%`;
 
         const ddAmount = best.gross * (best.payRateAdj / 12);
@@ -1182,7 +1181,8 @@
                 Proc Fee (%){" "}
                 {isRetention === "Yes" && (
                   <span style={{ color: "#0ea5e9", fontWeight: 700 }}>
-                    </span>
+                    (auto-set to 0.50% for Retention)
+                  </span>
                 )}
               </label>
 
