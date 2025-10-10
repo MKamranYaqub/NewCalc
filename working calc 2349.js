@@ -117,7 +117,7 @@
 
   /* ============ constants ============ */
   const CORE_FLOOR_RATE = window.CORE_FLOOR_RATE || 0.055;
- // 5.5%
+  // 5.5%
 
   function App() {
     /* ---------- top-level selections ---------- */
@@ -132,11 +132,14 @@
 
     /* ---------- criteria state ---------- */
     const getCurrentCriteria = () => {
-      if (propertyType === "Commercial" || propertyType === "Semi-Commercial") {
+      if (propertyType === "Semi-Commercial") {
         return (
-          window.CRITERIA_CONFIG?.Commercial ||
-          window.CRITERIA_CONFIG?.Residential
+          window.CRITERIA_CONFIG?.["Semi-Commercial"] ||
+          window.CRITERIA_CONFIG?.Commercial
         );
+      }
+      if (propertyType === "Commercial") {
+        return window.CRITERIA_CONFIG?.Commercial;
       }
       return window.CRITERIA_CONFIG?.Residential;
     };
@@ -274,12 +277,10 @@
 
     const PRODUCT_TYPES =
       propertyType === "Residential"
-        ? window.PRODUCT_TYPES || ["2yr Fix", "3yr Fix", "2yr Tracker"]
-        : window.PRODUCT_TYPES_Commercial || [
-            "2yr Fix",
-            "3yr Fix",
-            "2yr Tracker",
-          ];
+        ? window.PRODUCT_TYPES
+        : propertyType === "Semi-Commercial"
+        ? window.PRODUCT_TYPES_SemiCommercial
+        : window.PRODUCT_TYPES_Commercial;
 
     // Proc Fee auto-adjustment for Core Retention: base 1% → minus 0.5% = 0.5%
     const effectiveProcFeePct = useMemo(() => {
@@ -367,8 +368,15 @@
 
     /* ---------- rate source selection (Core + Core Retention supported) ---------- */
     const selected = useMemo(() => {
-      const isCommercial =
-        propertyType === "Commercial" || propertyType === "Semi-Commercial";
+      let rateSource;
+
+      const isCommercial = propertyType === "Commercial";
+      const isSemiCommercial = propertyType === "Semi-Commercial";
+
+      if (propertyType === "Residential") rateSource = window.RATES;
+      else if (isCommercial) rateSource = window.RATES_Commercial;
+      else if (isSemiCommercial) rateSource = window.RATES_SemiCommercial;
+      else rateSource = window.RATES;
 
       // Core range (Residential only)
       if (productGroup === "Core" && window.isCoreEligible?.(propertyType)) {
@@ -388,15 +396,24 @@
           retentionLtv === "65"
             ? window.RATES_Retention_65
             : window.RATES_Retention_75;
-        return propertyType === "Residential"
-          ? retentionRates?.Residential?.[tier]?.products?.[productType]
-          : retentionRates?.Commercial?.[tier]?.products?.[productType];
+
+        if (propertyType === "Residential") {
+          return retentionRates?.Residential?.[tier]?.products?.[productType];
+        } else if (isCommercial) {
+          return retentionRates?.Commercial?.[tier]?.products?.[productType];
+        } else if (isSemiCommercial) {
+          return retentionRates?.SemiCommercial?.[tier]?.products?.[
+            productType
+          ];
+        }
       }
 
-      // Specialist base (Residential/Commercial)
-      return isCommercial
-        ? window.RATES_Commercial?.[tier]?.products?.[productType]
-        : window.RATES?.[tier]?.products?.[productType];
+      // Specialist base (Residential / Commercial / Semi-Commercial)
+      if (isCommercial)
+        return window.RATES_Commercial?.[tier]?.products?.[productType];
+      else if (isSemiCommercial)
+        return window.RATES_SemiCommercial?.[tier]?.products?.[productType];
+      else return window.RATES?.[tier]?.products?.[productType];
     }, [
       propertyType,
       productGroup,
@@ -489,20 +506,19 @@
         const actualBaseRate = overriddenRate != null ? overriddenRate : base;
 
         let displayRate = isTracker
-  ? actualBaseRate + STANDARD_BBR
-  : actualBaseRate;
-let stressRate = isTracker ? actualBaseRate + STRESS_BBR : displayRate;
+          ? actualBaseRate + STANDARD_BBR
+          : actualBaseRate;
+        let stressRate = isTracker ? actualBaseRate + STRESS_BBR : displayRate;
 
-// Store versions with floor applied (only for gross calc)
-let displayRateForGross = displayRate;
-let stressRateForGross = stressRate;
+        // Store versions with floor applied (only for gross calc)
+        let displayRateForGross = displayRate;
+        let stressRateForGross = stressRate;
 
-if (productGroup === "Core" && window.isCoreEligible?.(propertyType)) {
-  // Only apply floor for gross calc — not display
-  displayRateForGross = applyCoreFloor(displayRateForGross);
-  stressRateForGross = applyCoreFloor(stressRateForGross);
-}
-
+        if (productGroup === "Core" && window.isCoreEligible?.(propertyType)) {
+          // Only apply floor for gross calc — not display
+          displayRateForGross = applyCoreFloor(displayRateForGross);
+          stressRateForGross = applyCoreFloor(stressRateForGross);
+        }
 
         const evalCombo = (rolledMonths, d) => {
           const monthsLeft = Math.max(termMonths - rolledMonths, 1);
@@ -617,7 +633,8 @@ if (productGroup === "Core" && window.isCoreEligible?.(propertyType)) {
         const ddAmount = best.gross * (best.payRateAdj / 12);
 
         return {
-          productName: `${productType}, ${tier}`,
+          productName: `${propertyType} ${productType}, ${tier}`,
+
           productType, // <<<--- FIX: Added productType here
           fullRateText,
           actualRateUsed: isTracker ? actualBaseRate : displayRate, // tracker shows margin; displayRate already floor applied for Core
@@ -916,10 +933,9 @@ if (productGroup === "Core" && window.isCoreEligible?.(propertyType)) {
       { key: "maxLTV", label: "Max Product LTV" },
     ];
 
-
     /* ---------- render ---------- */
     // Add a border to the data boxes for clear separation:
-/* ---------- render ---------- */
+    /* ---------- render ---------- */
     const valueBoxStyle = {
       width: "100%",
       textAlign: "center",
@@ -927,55 +943,64 @@ if (productGroup === "Core" && window.isCoreEligible?.(propertyType)) {
       background: "#fff",
       borderRadius: 4, // Reduced radius for a tighter look
       padding: "4px 8px", // Reduced padding
-      
     };
     const deferredCap = isTracker ? MAX_DEFERRED_TRACKER : MAX_DEFERRED_FIX;
     const colData = allColumnData;
-
 
     // Helper function to render the content for a single cell, based on row type
     const renderMatrixCellContent = (rowKey, data, colKey) => {
       const manual = manualSettings[colKey];
       const isOverridden = data.isRateOverridden;
       const isFeeOverridden = feeOverrides[colKey] != null;
-      const showCoreNA = productGroup === "Core" && window.isCoreEligible?.(propertyType);
-      
-      const rateDisplayValue = tempRateInput[colKey] !== undefined
-        ? tempRateInput[colKey]
-        : `${(data.actualRateUsed * 100).toFixed(2)}%`;
-      const defaultFeePctDec = Number(colKey) / 100;
-      const currentFeePctDec = feeOverrides[colKey] != null
-        ? Number(feeOverrides[colKey]) / 100
-        : defaultFeePctDec;
-      const feeDisplayValue = tempFeeInput[colKey] !== undefined
-        ? tempFeeInput[colKey]
-        : `${(currentFeePctDec * 100).toFixed(2)}%`;
+      const showCoreNA =
+        productGroup === "Core" && window.isCoreEligible?.(propertyType);
 
+      const rateDisplayValue =
+        tempRateInput[colKey] !== undefined
+          ? tempRateInput[colKey]
+          : `${(data.actualRateUsed * 100).toFixed(2)}%`;
+      const defaultFeePctDec = Number(colKey) / 100;
+      const currentFeePctDec =
+        feeOverrides[colKey] != null
+          ? Number(feeOverrides[colKey]) / 100
+          : defaultFeePctDec;
+      const feeDisplayValue =
+        tempFeeInput[colKey] !== undefined
+          ? tempFeeInput[colKey]
+          : `${(currentFeePctDec * 100).toFixed(2)}%`;
 
       switch (rowKey) {
         case "productName":
           return data.productName;
-        
+
         case "fullRate":
           return (
             <div
               style={{
                 background: "#fefce8",
                 padding: "4px 10px",
-                border: isOverridden ? "1px solid #fde047" : "1px solid #ffffffff",
+                border: isOverridden
+                  ? "1px solid #fde047"
+                  : "1px solid #ffffffff",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
                 borderRadius: 8,
-                width: '100%'
+                width: "100%",
               }}
             >
               <input
                 type="text"
                 value={rateDisplayValue}
                 onChange={(e) => handleRateInputChange(colKey, e.target.value)}
-                onBlur={(e) => handleRateInputBlur(colKey, e.target.value, data.actualRateUsed)}
+                onBlur={(e) =>
+                  handleRateInputBlur(
+                    colKey,
+                    e.target.value,
+                    data.actualRateUsed
+                  )
+                }
                 placeholder={data.fullRateText}
                 style={{
                   width: "100%",
@@ -1010,20 +1035,24 @@ if (productGroup === "Core" && window.isCoreEligible?.(propertyType)) {
               style={{
                 background: "#fefce8",
                 padding: "4px 10px",
-                border: isFeeOverridden ? "1px solid #fde047" : "1px solid #ffffffff",
+                border: isFeeOverridden
+                  ? "1px solid #fde047"
+                  : "1px solid #ffffffff",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
                 borderRadius: 8,
-                width: '100%'
+                width: "100%",
               }}
             >
               <input
                 type="text"
                 value={feeDisplayValue}
                 onChange={(e) => handleFeeInputChange(colKey, e.target.value)}
-                onBlur={(e) => handleFeeInputBlur(colKey, e.target.value, defaultFeePctDec)}
+                onBlur={(e) =>
+                  handleFeeInputBlur(colKey, e.target.value, defaultFeePctDec)
+                }
                 placeholder={`${(defaultFeePctDec * 100).toFixed(2)}%`}
                 style={{
                   width: "100%",
@@ -1054,7 +1083,7 @@ if (productGroup === "Core" && window.isCoreEligible?.(propertyType)) {
 
         case "payRate":
           return data.payRateText;
-        
+
         case "netLoan":
           return (
             <>
@@ -1067,7 +1096,7 @@ if (productGroup === "Core" && window.isCoreEligible?.(propertyType)) {
               )}
             </>
           );
-        
+
         case "grossLoan":
           return (
             <>
@@ -1106,7 +1135,7 @@ if (productGroup === "Core" && window.isCoreEligible?.(propertyType)) {
               />
             </div>
           );
-        
+
         case "deferredAdjustment":
           if (showCoreNA) return "—";
           return (
@@ -1130,7 +1159,8 @@ if (productGroup === "Core" && window.isCoreEligible?.(propertyType)) {
                 formatValue={(v) => fmtPct(v, 2)}
                 style={{ margin: "4px 0" }}
               />
-              {(manual?.rolledMonths != null || manual?.deferredPct != null) && (
+              {(manual?.rolledMonths != null ||
+                manual?.deferredPct != null) && (
                 <button
                   onClick={() => handleResetManual(colKey)}
                   style={{
@@ -1163,25 +1193,27 @@ if (productGroup === "Core" && window.isCoreEligible?.(propertyType)) {
               %)
             </>
           );
-        
+
         case "rolledInterest":
           return showCoreNA
             ? "—"
             : `${fmtMoney0(data.rolled)} (${data.rolledMonths} months)`;
-        
+
         case "deferredInterest":
           return showCoreNA
             ? "—"
-            : `${fmtMoney0(data.deferred)} (${(data.deferredCapPct * 100).toFixed(
-                2
-              )}%)`;
-        
+            : `${fmtMoney0(data.deferred)} (${(
+                data.deferredCapPct * 100
+              ).toFixed(2)}%)`;
+
         case "directDebit":
-          return `${fmtMoney0(data.directDebit)} from month ${data.ddStartMonth}`;
-        
+          return `${fmtMoney0(data.directDebit)} from month ${
+            data.ddStartMonth
+          }`;
+
         case "procFee":
           return fmtMoney0(data.procFeeValue);
-        
+
         case "brokerFee":
           return fmtMoney0(data.brokerFeeValue);
 
@@ -1199,7 +1231,7 @@ if (productGroup === "Core" && window.isCoreEligible?.(propertyType)) {
                 : "Refer to product terms"}
             </>
           );
-        
+
         case "maxLTV":
           return `${(data.maxLtvRule * 100).toFixed(0)}%`;
 
@@ -1207,7 +1239,6 @@ if (productGroup === "Core" && window.isCoreEligible?.(propertyType)) {
           return null;
       }
     };
-
 
     return (
       <div className="container">
@@ -1512,8 +1543,7 @@ if (productGroup === "Core" && window.isCoreEligible?.(propertyType)) {
               <label>
                 Proc Fee (%){" "}
                 {isRetention === "Yes" && (
-                  <span style={{ color: "#0ea5e9", fontWeight: 700 }}>
-                    </span>
+                  <span style={{ color: "#0ea5e9", fontWeight: 700 }}></span>
                 )}
               </label>
 
@@ -1689,7 +1719,7 @@ if (productGroup === "Core" && window.isCoreEligible?.(propertyType)) {
                   </div>
                 );
               })}
-              
+
               {/* RENDER DATA ROWS (Labels + Data Cells) */}
               {matrixLabels.map((row, rowIndex) => (
                 <React.Fragment key={row.key}>
@@ -1714,11 +1744,18 @@ if (productGroup === "Core" && window.isCoreEligible?.(propertyType)) {
 
                   {/* DATA CELLS (Remaining columns of this row) */}
                   {colData.map((data, colIndex) => {
-                    const content = renderMatrixCellContent(row.key, data, data.colKey);
-                    
+                    const content = renderMatrixCellContent(
+                      row.key,
+                      data,
+                      data.colKey
+                    );
+
                     // Conditionally set the style for the outer mRow and inner mValue
-                    const isInputRow = row.key === 'fullRate' || row.key === 'productFeePct';
-                    const isSliderRow = row.key === 'rolledMonths' || row.key === 'deferredAdjustment';
+                    const isInputRow =
+                      row.key === "fullRate" || row.key === "productFeePct";
+                    const isSliderRow =
+                      row.key === "rolledMonths" ||
+                      row.key === "deferredAdjustment";
 
                     return (
                       <div
@@ -1731,7 +1768,7 @@ if (productGroup === "Core" && window.isCoreEligible?.(propertyType)) {
                           alignItems: isSliderRow ? "flex-start" : "center", // Align sliders to the top of the cell
                         }}
                       >
-                        <div 
+                        <div
                           className="mValue"
                           style={{
                             width: "100%",
@@ -1758,9 +1795,7 @@ if (productGroup === "Core" && window.isCoreEligible?.(propertyType)) {
               <div
                 className="finalMatrixRow"
                 style={{ gridRow: matrixLabels.length + 3 }} // After the last data row (17 rows)
-              >
-                
-              </div>
+              ></div>
             </div>
           </div>
         )}

@@ -293,3 +293,107 @@ window.FEE_COLUMN_KEYS.Core_Retention_75 = [5.5, 3.5, 2.5, 1.5];
 
 // Helper: is a property type eligible for Core?
 window.isCoreEligible = function(propertyType){ return propertyType === "Residential"; }
+
+/* ---------- Semi-Commercial Base Rates ---------- */
+window.RATES_SemiCommercial = {
+  "Tier 1": {
+    products: {
+      "3yr Fix": { 6: 0.0699, 4: 0.0769, 2: 0.0839 },
+      "2yr Fix": { 6: 0.0639, 4: 0.0729, 2: 0.0829 },
+      "2yr Tracker": { 6: 0.0249, 4: 0.0349, 2: 0.0454, isMargin: true },
+    },
+  },
+  "Tier 2": {
+    products: {
+      "3yr Fix": { 6: 0.0729, 4: 0.0799, 2: 0.0869 },
+      "2yr Fix": { 6: 0.0679, 4: 0.0769, 2: 0.0879 },
+      "2yr Tracker": { 6: 0.0299, 4: 0.0399, 2: 0.0504, isMargin: true },
+    },
+  },
+};
+window.PRODUCT_TYPES_SemiCommercial = ["2yr Fix", "3yr Fix", "2yr Tracker"];
+window.MIN_LOAN_SemiCommercial = 150000;
+window.MAX_LOAN_SemiCommercial = 2000000;
+window.STANDARD_BBR_SemiCommercial = 0.04;
+window.STRESS_BBR_SemiCommercial = 0.0425;
+window.TERM_MONTHS_SemiCommercial = {
+  "2yr Fix": 24,
+  "3yr Fix": 36,
+  "2yr Tracker": 24,
+};
+window.TOTAL_TERM_SemiCommercial = 10;
+window.CURRENT_MVR_SemiCommercial = 0.0859;
+
+window.RATES_Retention_65.SemiCommercial = {
+  "Tier 1": {
+    products: {
+      "2yr Fix": { 5.5: 0.0569, 3.5: 0.0599, 1.5: 0.0659 },
+      "3yr Fix": { 5.5: 0.0609, 3.5: 0.0639, 1.5: 0.0699 },
+      "2yr Tracker": { 5.5: 0.0209, 3.5: 0.0239, 1.5: 0.0299, isMargin: true },
+    },
+  },
+  "Tier 2": {
+    products: {
+      "2yr Fix": { 5.5: 0.0599, 3.5: 0.0629, 1.5: 0.0689 },
+      "3yr Fix": { 5.5: 0.0639, 3.5: 0.0669, 1.5: 0.0729 },
+      "2yr Tracker": { 5.5: 0.0239, 3.5: 0.0269, 1.5: 0.0329, isMargin: true },
+    },
+  },
+};
+
+window.RATES_Retention_75.SemiCommercial = {
+  "Tier 1": {
+    products: {
+      "2yr Fix": { 5.5: 0.0579, 3.5: 0.0609, 1.5: 0.0669 },
+      "3yr Fix": { 5.5: 0.0619, 3.5: 0.0649, 1.5: 0.0709 },
+      "2yr Tracker": { 5.5: 0.0219, 3.5: 0.0249, 1.5: 0.0309, isMargin: true },
+    },
+  },
+  "Tier 2": {
+    products: {
+      "2yr Fix": { 5.5: 0.0609, 3.5: 0.0639, 1.5: 0.0699 },
+      "3yr Fix": { 5.5: 0.0649, 3.5: 0.0679, 1.5: 0.0739 },
+      "2yr Tracker": { 5.5: 0.0249, 3.5: 0.0279, 1.5: 0.0339, isMargin: true },
+    },
+  },
+};
+
+// Fee column setup
+window.FEE_COLUMN_KEYS.RetentionSemiCommercial = [5.5, 3.5, 1.5];
+
+window.RATES_Retention_75.SemiCommercial = {
+  "Tier 1": {
+    products: {
+      "2yr Fix": { 5.5: 0.0569, 3.5: 0.0599, 1.5: 0.0659 },
+      "3yr Fix": { 5.5: 0.0609, 3.5: 0.0639, 1.5: 0.0699 },
+      "2yr Tracker": { 5.5: 0.0209, 3.5: 0.0239, 1.5: 0.0299, isMargin: true },
+    },
+  },
+  "Tier 2": {
+    products: {
+      "2yr Fix": { 5.5: 0.0599, 3.5: 0.0629, 1.5: 0.0689 },
+      "3yr Fix": { 5.5: 0.0639, 3.5: 0.0669, 1.5: 0.0729 },
+      "2yr Tracker": { 5.5: 0.0239, 3.5: 0.0269, 1.5: 0.0329, isMargin: true },
+    },
+  },
+};
+
+window.RATES_Retention_75.SemiCommercial = {
+  "Tier 1": {
+    products: {
+      "2yr Fix": { 5.5: 0.0579, 3.5: 0.0609, 1.5: 0.0669 },
+      "3yr Fix": { 5.5: 0.0619, 3.5: 0.0649, 1.5: 0.0709 },
+      "2yr Tracker": { 5.5: 0.0219, 3.5: 0.0249, 1.5: 0.0309, isMargin: true },
+    },
+  },
+  "Tier 2": {
+    products: {
+      "2yr Fix": { 5.5: 0.0609, 3.5: 0.0639, 1.5: 0.0699 },
+      "3yr Fix": { 5.5: 0.0649, 3.5: 0.0679, 1.5: 0.0739 },
+      "2yr Tracker": { 5.5: 0.0249, 3.5: 0.0279, 1.5: 0.0339, isMargin: true },
+    },
+  },
+};
+
+// Fee column setup
+window.FEE_COLUMN_KEYS.RetentionSemiCommercial = [5.5, 3.5, 1.5];
