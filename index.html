@@ -49,6 +49,7 @@
 
   .field > label {
     font-size: 12px;
+    font-weight: 600;
     color: var(--accent);
     margin-bottom: 6px;
   }
@@ -162,32 +163,41 @@
     min-height: 20px;
   }
 
-  /* Buttons & toggles */
-  .primaryBtn {
-    height: 36px;
-    border-radius: 8px;
-    border: 1px solid #008891;
-    background: #008891;
-    color: #fff;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all .2s;
-  }
-  .primaryBtn:hover { background: #2DB0B9; border-color: #2DB0B9; }
-  .segToggle {
-    display: inline-flex;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    overflow: hidden;
-  }
-  .segToggle button {
-    padding: 6px 12px;
-    border: 0;
-    background: #fff;
-    cursor: pointer;
-    font-weight: 700;
-  }
-  .segToggle button.active { background: #008891; color: #fff; }
+ .segToggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff; /* Ensures no white seam shows through */
+}
+
+.segToggle button {
+  flex: 1;                      /* equal width */
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-weight: 600;
+  padding: 8px 14px;
+  margin: 0;                    /* ✅ removes any tiny gap */
+  line-height: 1;
+  border-right: 1px solid var(--border); /* creates divider between buttons */
+  transition: all 0.2s ease;
+}
+
+.segToggle button:last-child {
+  border-right: none; /* remove right border on last button */
+}
+
+.segToggle button.active {
+  background: #008891; /* teal */
+  color: #fff;
+  font-weight: 700;
+}
+
+.segToggle button:hover:not(.active) {
+  background: #f1f5f9;
+}
+
 
   /* --- Mobile-Friendly Card View for Matrix --- */
 @media (max-width: 900px) {
