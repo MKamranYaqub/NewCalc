@@ -240,11 +240,6 @@ window.CRITERIA_CONFIG = {
       "Tier 2": 60,
       "Tier 3": 70,
     },
-    flatAboveCommOverrides: {
-  "Tier 2": 60,
-  "Tier 3": 70,
-}
-
   },
 };
 

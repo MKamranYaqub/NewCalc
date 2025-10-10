@@ -116,7 +116,8 @@
   }
 
   /* ============ constants ============ */
-  const CORE_FLOOR_RATE = 0.055; // 5.5%
+  const CORE_FLOOR_RATE = window.CORE_FLOOR_RATE || 0.055;
+ // 5.5%
 
   function App() {
     /* ---------- top-level selections ---------- */
@@ -293,13 +294,13 @@
     // fee column keys (headers)
     const SHOW_FEE_COLS = useMemo(() => {
       // Core path
-      if (productGroup === "Core") {
+      if (productGroup === "Core" && window.isCoreEligible?.(propertyType)) {
         if (isRetention === "Yes") {
           return retentionLtv === "65"
             ? window.FEE_COLUMN_KEYS?.Core_Retention_65 || [5.5, 3.5, 2.5, 1.5]
             : window.FEE_COLUMN_KEYS?.Core_Retention_75 || [5.5, 3.5, 2.5, 1.5];
         }
-        return [6, 4, 3, 2];
+        return window.FEE_COLUMN_KEYS?.Core || [6, 4, 3, 2];
       }
       // Specialist Retention
       if (isRetention === "Yes") {
@@ -488,19 +489,24 @@
         const actualBaseRate = overriddenRate != null ? overriddenRate : base;
 
         let displayRate = isTracker
-          ? actualBaseRate + STANDARD_BBR
-          : actualBaseRate;
-        let stressRate = isTracker ? actualBaseRate + STRESS_BBR : displayRate;
+  ? actualBaseRate + STANDARD_BBR
+  : actualBaseRate;
+let stressRate = isTracker ? actualBaseRate + STRESS_BBR : displayRate;
 
-        // Core floor applies after BBR (for trackers)
-        if (productGroup === "Core" && window.isCoreEligible?.(propertyType)) {
-          displayRate = applyCoreFloor(displayRate);
-          stressRate = applyCoreFloor(stressRate);
-        }
+// Store versions with floor applied (only for gross calc)
+let displayRateForGross = displayRate;
+let stressRateForGross = stressRate;
+
+if (productGroup === "Core" && window.isCoreEligible?.(propertyType)) {
+  // Only apply floor for gross calc — not display
+  displayRateForGross = applyCoreFloor(displayRateForGross);
+  stressRateForGross = applyCoreFloor(stressRateForGross);
+}
+
 
         const evalCombo = (rolledMonths, d) => {
           const monthsLeft = Math.max(termMonths - rolledMonths, 1);
-          const stressAdj = Math.max(stressRate - d, 1e-6);
+          const stressAdj = Math.max(stressRateForGross - d, 1e-6);
 
           // Rent-based cap (ICR)
           let grossRent = Infinity;
@@ -516,7 +522,8 @@
             sn != null &&
             feePct < 1
           ) {
-            const payRateAdj = Math.max(displayRate - d, 0);
+            const payRateAdj = Math.max(displayRateForGross - d, 0);
+
             const denom =
               1 -
               feePct -
@@ -531,7 +538,8 @@
 
           if (eligibleGross < MIN_LOAN - 1e-6) eligibleGross = 0;
 
-          const payRateAdj = Math.max(displayRate - d, 0);
+          const payRateAdj = Math.max(displayRateForGross - d, 0);
+
           const feeAmt = eligibleGross * feePct;
           const rolledAmt = eligibleGross * (payRateAdj / 12) * rolledMonths;
           const deferredAmt = eligibleGross * (d / 12) * termMonths;
@@ -603,13 +611,14 @@
           : `${(displayRate * 100).toFixed(2)}%`;
 
         const payRateText = isTracker
-          ? `${(best.payRateAdj * 100).toFixed(2)}% + BBR adj`
+          ? `${(best.payRateAdj * 100).toFixed(2)}% + BBR`
           : `${(best.payRateAdj * 100).toFixed(2)}%`;
 
         const ddAmount = best.gross * (best.payRateAdj / 12);
 
         return {
           productName: `${productType}, ${tier}`,
+          productType, // <<<--- FIX: Added productType here
           fullRateText,
           actualRateUsed: isTracker ? actualBaseRate : displayRate, // tracker shows margin; displayRate already floor applied for Core
           isRateOverridden: overriddenRate != null,
@@ -866,16 +875,339 @@
         return s;
       });
 
+    /* ---------- Matrix labels definition (17 rows) ---------- */
+    const matrixLabels = [
+      { key: "productName", label: "Product Name" },
+      { key: "fullRate", label: "Full Rate (Editable)" },
+      { key: "productFeePct", label: "Product Fee %" },
+      { key: "payRate", label: "Pay Rate" },
+      {
+        key: "netLoan",
+        label: (
+          <>
+            Net Loan{" "}
+            <span style={{ fontSize: 11, fontWeight: 400 }}>
+              (advanced day 1)
+            </span>
+          </>
+        ),
+      },
+      {
+        key: "grossLoan",
+        label: (
+          <>
+            Max Gross Loan{" "}
+            <span style={{ fontSize: 11, fontWeight: 400 }}>
+              (paid at redemption)
+            </span>
+          </>
+        ),
+      },
+      { key: "rolledMonths", label: "Rolled Months" },
+      { key: "deferredAdjustment", label: "Deferred Adjustment" },
+      { key: "productFee", label: "Product Fee" },
+      { key: "rolledInterest", label: "Rolled Months Interest" },
+      { key: "deferredInterest", label: "Deferred Interest" },
+      { key: "directDebit", label: "Direct Debit" },
+      { key: "procFee", label: "Proc Fee (£)" },
+      { key: "brokerFee", label: "Broker Fee (£)" },
+      { key: "revertRate", label: "Revert Rate" },
+      { key: "totalTermERC", label: "Total Term | ERC" },
+      { key: "maxLTV", label: "Max Product LTV" },
+    ];
+
+
     /* ---------- render ---------- */
+    // Add a border to the data boxes for clear separation:
+/* ---------- render ---------- */
     const valueBoxStyle = {
       width: "100%",
       textAlign: "center",
       fontWeight: 400,
       background: "#fff",
-      borderRadius: 8,
-      padding: "8px 10px",
+      borderRadius: 4, // Reduced radius for a tighter look
+      padding: "4px 8px", // Reduced padding
+      
     };
     const deferredCap = isTracker ? MAX_DEFERRED_TRACKER : MAX_DEFERRED_FIX;
+    const colData = allColumnData;
+
+
+    // Helper function to render the content for a single cell, based on row type
+    const renderMatrixCellContent = (rowKey, data, colKey) => {
+      const manual = manualSettings[colKey];
+      const isOverridden = data.isRateOverridden;
+      const isFeeOverridden = feeOverrides[colKey] != null;
+      const showCoreNA = productGroup === "Core" && window.isCoreEligible?.(propertyType);
+      
+      const rateDisplayValue = tempRateInput[colKey] !== undefined
+        ? tempRateInput[colKey]
+        : `${(data.actualRateUsed * 100).toFixed(2)}%`;
+      const defaultFeePctDec = Number(colKey) / 100;
+      const currentFeePctDec = feeOverrides[colKey] != null
+        ? Number(feeOverrides[colKey]) / 100
+        : defaultFeePctDec;
+      const feeDisplayValue = tempFeeInput[colKey] !== undefined
+        ? tempFeeInput[colKey]
+        : `${(currentFeePctDec * 100).toFixed(2)}%`;
+
+
+      switch (rowKey) {
+        case "productName":
+          return data.productName;
+        
+        case "fullRate":
+          return (
+            <div
+              style={{
+                background: "#fefce8",
+                padding: "4px 10px",
+                border: isOverridden ? "1px solid #fde047" : "1px solid #ffffffff",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: 8,
+                width: '100%'
+              }}
+            >
+              <input
+                type="text"
+                value={rateDisplayValue}
+                onChange={(e) => handleRateInputChange(colKey, e.target.value)}
+                onBlur={(e) => handleRateInputBlur(colKey, e.target.value, data.actualRateUsed)}
+                placeholder={data.fullRateText}
+                style={{
+                  width: "100%",
+                  border: "none",
+                  textAlign: "center",
+                  fontWeight: 700,
+                  background: "transparent",
+                  color: isOverridden ? "#ca8a04" : "#1e293b",
+                }}
+              />
+              {isOverridden && (
+                <button
+                  onClick={() => handleResetRateOverride(colKey)}
+                  style={{
+                    fontSize: 10,
+                    color: "#ca8a04",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    marginTop: 4,
+                  }}
+                >
+                  (Reset Rate)
+                </button>
+              )}
+            </div>
+          );
+
+        case "productFeePct":
+          return (
+            <div
+              style={{
+                background: "#fefce8",
+                padding: "4px 10px",
+                border: isFeeOverridden ? "1px solid #fde047" : "1px solid #ffffffff",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: 8,
+                width: '100%'
+              }}
+            >
+              <input
+                type="text"
+                value={feeDisplayValue}
+                onChange={(e) => handleFeeInputChange(colKey, e.target.value)}
+                onBlur={(e) => handleFeeInputBlur(colKey, e.target.value, defaultFeePctDec)}
+                placeholder={`${(defaultFeePctDec * 100).toFixed(2)}%`}
+                style={{
+                  width: "100%",
+                  border: "none",
+                  textAlign: "center",
+                  fontWeight: 700,
+                  background: "transparent",
+                  color: isFeeOverridden ? "#ca8a04" : "#1e293b",
+                }}
+              />
+              {isFeeOverridden && (
+                <button
+                  onClick={() => handleResetFeeOverride(colKey)}
+                  style={{
+                    fontSize: 10,
+                    color: "#ca8a04",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    marginTop: 4,
+                  }}
+                >
+                  (Reset Fee)
+                </button>
+              )}
+            </div>
+          );
+
+        case "payRate":
+          return data.payRateText;
+        
+        case "netLoan":
+          return (
+            <>
+              <span style={{ fontWeight: 700 }}>{fmtMoney0(data.net)}</span>
+              {data.netLtv != null && (
+                <span style={{ fontWeight: 400 }}>
+                  {" "}
+                  @ {Math.round(data.netLtv * 100)}% LTV
+                </span>
+              )}
+            </>
+          );
+        
+        case "grossLoan":
+          return (
+            <>
+              <span style={{ fontWeight: 700 }}>{fmtMoney0(data.gross)}</span>
+              {data.ltv != null && (
+                <span style={{ fontWeight: 400 }}>
+                  {" "}
+                  @ {Math.round(data.ltv * 100)}% LTV
+                </span>
+              )}
+            </>
+          );
+
+        case "rolledMonths":
+          if (showCoreNA) return "—";
+          return (
+            <div
+              style={{
+                width: "100%",
+                background: manual?.rolledMonths != null ? "#fefce8" : "#fff",
+                borderRadius: 8,
+                padding: "1px 1px",
+                marginTop: 4,
+                marginBottom: 4,
+              }}
+            >
+              <SliderInput
+                label=""
+                min={0}
+                max={Math.min(MAX_ROLLED_MONTHS, data.termMonths)}
+                step={1}
+                value={manual?.rolledMonths ?? data.rolledMonths}
+                onChange={(val) => handleRolledChange(colKey, val)}
+                formatValue={(v) => `${v} months`}
+                style={{ margin: "4px 0" }}
+              />
+            </div>
+          );
+        
+        case "deferredAdjustment":
+          if (showCoreNA) return "—";
+          return (
+            <div
+              style={{
+                width: "100%",
+                background: manual?.deferredPct != null ? "#fefce8" : "#fff",
+                borderRadius: 8,
+                padding: "1px 1px",
+                marginTop: 4,
+                marginBottom: 4,
+              }}
+            >
+              <SliderInput
+                label=""
+                min={0}
+                max={deferredCap}
+                step={0.0001}
+                value={manual?.deferredPct ?? data.deferredCapPct}
+                onChange={(val) => handleDeferredChange(colKey, val)}
+                formatValue={(v) => fmtPct(v, 2)}
+                style={{ margin: "4px 0" }}
+              />
+              {(manual?.rolledMonths != null || manual?.deferredPct != null) && (
+                <button
+                  onClick={() => handleResetManual(colKey)}
+                  style={{
+                    fontSize: 10,
+                    color: "#ca8a04",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    marginTop: 4,
+                    alignSelf: "end",
+                    display: "block",
+                    width: "100%",
+                    textAlign: "right",
+                  }}
+                >
+                  (Reset to Optimum)
+                </button>
+              )}
+            </div>
+          );
+
+        case "productFee":
+          return (
+            <>
+              {fmtMoney0(data.feeAmt)} (
+              {(feeOverrides[colKey] != null
+                ? Number(feeOverrides[colKey])
+                : Number(colKey)
+              ).toFixed(2)}
+              %)
+            </>
+          );
+        
+        case "rolledInterest":
+          return showCoreNA
+            ? "—"
+            : `${fmtMoney0(data.rolled)} (${data.rolledMonths} months)`;
+        
+        case "deferredInterest":
+          return showCoreNA
+            ? "—"
+            : `${fmtMoney0(data.deferred)} (${(data.deferredCapPct * 100).toFixed(
+                2
+              )}%)`;
+        
+        case "directDebit":
+          return `${fmtMoney0(data.directDebit)} from month ${data.ddStartMonth}`;
+        
+        case "procFee":
+          return fmtMoney0(data.procFeeValue);
+        
+        case "brokerFee":
+          return fmtMoney0(data.brokerFeeValue);
+
+        case "revertRate":
+          return "MVR";
+
+        case "totalTermERC":
+          return (
+            <>
+              {TOTAL_TERM} years |{" "}
+              {data.productType.includes("2yr")
+                ? "3% in year 1, 2% in year 2"
+                : data.productType.includes("3yr")
+                ? "3% in year 1, 2% in year 2, 1% in year 3"
+                : "Refer to product terms"}
+            </>
+          );
+        
+        case "maxLTV":
+          return `${(data.maxLtvRule * 100).toFixed(0)}%`;
+
+        default:
+          return null;
+      }
+    };
+
 
     return (
       <div className="container">
@@ -1181,8 +1513,7 @@
                 Proc Fee (%){" "}
                 {isRetention === "Yes" && (
                   <span style={{ color: "#0ea5e9", fontWeight: 700 }}>
-                    (auto-set to 0.50% for Retention)
-                  </span>
+                    </span>
                 )}
               </label>
 
@@ -1298,490 +1629,138 @@
           </div>
         )}
 
-        {/* MATRIX */}
+        {/* MATRIX (Unified Grid Structure) */}
         {canShowMatrix && (
           <div className="card" style={{ gridColumn: "1 / -1" }}>
-            <div className="matrix">
+            <div className="matrix mainMatrix">
+              {/* Conditional Warning Message */}
               {(() => {
-                const colData = allColumnData;
                 const anyBelowMin = colData.some((d) => d.belowMin);
                 const anyAtMaxCap = colData.some((d) => d.hitMaxCap);
+                if (anyBelowMin || anyAtMaxCap) {
+                  return (
+                    <div
+                      style={{
+                        gridColumn: "1 / -1",
+                        margin: "8px 0 12px",
+                        padding: "10px 12px",
+                        borderRadius: 10,
+                        background: "#fff7ed",
+                        border: "1px solid #fed7aa",
+                        color: "#7c2d12",
+                        fontWeight: 600,
+                        textAlign: "center",
+                        gridRow: 1, // Place in the first logical grid row
+                      }}
+                    >
+                      {anyBelowMin &&
+                        "One or more gross loans are below the £150,000 minimum threshold. "}
+                      {anyAtMaxCap &&
+                        "One or more gross loans are capped at the maximum loan limit."}
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+
+              {/* RENDER HEADERS */}
+              <div className="labelsHead" style={{ gridRow: 2 }}></div>
+              {colData.map((d, idx) => {
+                const headClass =
+                  idx === 0
+                    ? "headGreen"
+                    : idx === 1
+                    ? "headOrange"
+                    : idx === 2
+                    ? "headTeal"
+                    : "headBlue";
                 return (
-                  <>
-                    {(anyBelowMin || anyAtMaxCap) && (
+                  <div
+                    key={d.colKey}
+                    className={`matrixHead ${headClass}`}
+                    style={{
+                      gridColumn: idx + 2, // Start at the second column
+                      gridRow: 2, // The header row is row 2 of the grid
+                    }}
+                  >
+                    BTL {productGroup}
+                    {isRetention === "Yes" ? " Retention" : ""}{" "}
+                    {Number(d.colKey)}% FEE
+                  </div>
+                );
+              })}
+              
+              {/* RENDER DATA ROWS (Labels + Data Cells) */}
+              {matrixLabels.map((row, rowIndex) => (
+                <React.Fragment key={row.key}>
+                  {/* LABELS CELL (First column of this row) */}
+                  <div
+                    className="mRow matrixLabelsRow"
+                    style={{ gridColumn: 1, gridRow: rowIndex + 3 }} // Data starts at row 3 (Header is row 2)
+                  >
+                    <div
+                      style={{
+                        fontSize: 15,
+                        fontWeight: 700,
+                        color: "var(--accent)",
+                        width: "100%",
+                        textAlign: "left",
+                        padding: "0 4px",
+                      }}
+                    >
+                      <b>{row.label}</b>
+                    </div>
+                  </div>
+
+                  {/* DATA CELLS (Remaining columns of this row) */}
+                  {colData.map((data, colIndex) => {
+                    const content = renderMatrixCellContent(row.key, data, data.colKey);
+                    
+                    // Conditionally set the style for the outer mRow and inner mValue
+                    const isInputRow = row.key === 'fullRate' || row.key === 'productFeePct';
+                    const isSliderRow = row.key === 'rolledMonths' || row.key === 'deferredAdjustment';
+
+                    return (
                       <div
+                        key={data.colKey + row.key}
+                        className="mRow"
                         style={{
-                          gridColumn: "1 / -1",
-                          margin: "8px 0 12px",
-                          padding: "10px 12px",
-                          borderRadius: 10,
-                          background: "#fff7ed",
-                          border: "1px solid #fed7aa",
-                          color: "#7c2d12",
-                          fontWeight: 600,
-                          textAlign: "center",
+                          gridColumn: colIndex + 2,
+                          gridRow: rowIndex + 3,
+                          justifyContent: "flex-end",
+                          alignItems: isSliderRow ? "flex-start" : "center", // Align sliders to the top of the cell
                         }}
                       >
-                        {anyBelowMin &&
-                          "One or more gross loans are below the £150,000 minimum threshold. "}
-                        {anyAtMaxCap &&
-                          "One or more gross loans are capped at the maximum loan limit."}
-                      </div>
-                    )}
-
-                    <div
-                      className="matrixLabels"
-                      style={{ display: "flex", flexDirection: "column" }}
-                    >
-                      <div className="labelsHead"></div>
-                      <div className="mRow">
-                        <b></b>
-                      </div>
-                      <div className="mRow">
-                        <b>Product Name</b>
-                      </div>
-                      <div className="mRow">
-                        <b>Full Rate (Editable)</b>
-                      </div>
-                      <div className="mRow">
-                        <b>Product Fee %</b>
-                      </div>
-                      <div className="mRow">
-                        <b>Pay Rate</b>
-                      </div>
-                      <div className="mRow">
-                        <b>
-                          Net Loan{" "}
-                          <span style={{ fontSize: 11, fontWeight: 400 }}>
-                            (advanced day 1)
-                          </span>
-                        </b>
-                      </div>
-                      <div className="mRow">
-                        <b>
-                          Max Gross Loan{" "}
-                          <span style={{ fontSize: 11, fontWeight: 400 }}>
-                            (paid at redemption)
-                          </span>
-                        </b>
-                      </div>
-                      <div className="mRow">
-                        <b>Rolled Months</b>
-                      </div>
-                      <div className="mRow">
-                        <b>Deferred Adjustment</b>
-                      </div>
-                      <div className="mRow">
-                        <b>Product Fee</b>
-                      </div>
-                      <div className="mRow">
-                        <b>Rolled Months Interest</b>
-                      </div>
-                      <div className="mRow">
-                        <b>Deferred Interest</b>
-                      </div>
-                      <div className="mRow">
-                        <b>Direct Debit</b>
-                      </div>
-                      <div className="mRow">
-                        <b>Proc Fee (£)</b>
-                      </div>
-                      <div className="mRow">
-                        <b>Broker Fee (£)</b>
-                      </div>
-                      <div className="mRow">
-                        <b>Revert Rate</b>
-                      </div>
-                      <div className="mRow">
-                        <b>Total Term | ERC</b>
-                      </div>
-                      <div className="mRow">
-                        <b>Max Product LTV</b>
-                      </div>
-                    </div>
-
-                    {colData.map((data, idx) => {
-                      const colKey = data.colKey;
-                      const headClass =
-                        idx === 0
-                          ? "headGreen"
-                          : idx === 1
-                          ? "headOrange"
-                          : idx === 2
-                          ? "headTeal"
-                          : "headBlue";
-                      const manual = manualSettings[colKey];
-
-                      const rateDisplayValue =
-                        tempRateInput[colKey] !== undefined
-                          ? tempRateInput[colKey]
-                          : `${(data.actualRateUsed * 100).toFixed(2)}%`;
-                      const isOverridden = data.isRateOverridden;
-
-                      const defaultFeePctDec = Number(colKey) / 100;
-                      const currentFeePctDec =
-                        feeOverrides[colKey] != null
-                          ? Number(feeOverrides[colKey]) / 100
-                          : defaultFeePctDec;
-                      const feeDisplayValue =
-                        tempFeeInput[colKey] !== undefined
-                          ? tempFeeInput[colKey]
-                          : `${(currentFeePctDec * 100).toFixed(2)}%`;
-                      const isFeeOverridden = feeOverrides[colKey] != null;
-
-                      const showCoreNA =
-                        productGroup === "Core" &&
-                        window.isCoreEligible?.(propertyType);
-
-                      return (
-                        <div
-                          key={colKey}
-                          className="matrixCol"
-                          style={{ display: "flex", flexDirection: "column" }}
+                        <div 
+                          className="mValue"
+                          style={{
+                            width: "100%",
+                            textAlign: "center",
+                            fontWeight: 400,
+                            background: "#ffffffff",
+                            borderRadius: 8,
+                            padding: isInputRow ? "0" : "8px 10px", // Remove padding if content is complex inner div
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
                         >
-                          <div className={`matrixHead ${headClass}`}>
-                            BTL {productGroup}
-                            {isRetention === "Yes" ? " Retention" : ""},{" "}
-                            {Number(colKey)}% Product Fee
-                          </div>
-
-                          <div className="mRow">
-                            <div className="mValue" style={valueBoxStyle}>
-                              {data.productName}
-                            </div>
-                          </div>
-
-                          <div className="mRow">
-                            <div
-                              className="mValue"
-                              style={{
-                                ...valueBoxStyle,
-                                background: "#fefce8",
-                                padding: "4px 10px",
-                                border: isOverridden
-                                  ? "1px solid #fde047"
-                                  : "1px solid #e2e8f0",
-                                display: "flex",
-                                flexDirection: "column",
-                                alignItems: "center",
-                                justifyContent: "center",
-                              }}
-                            >
-                              <input
-                                type="text"
-                                value={rateDisplayValue}
-                                onChange={(e) =>
-                                  handleRateInputChange(colKey, e.target.value)
-                                }
-                                onBlur={(e) =>
-                                  handleRateInputBlur(
-                                    colKey,
-                                    e.target.value,
-                                    data.actualRateUsed
-                                  )
-                                }
-                                placeholder={data.fullRateText}
-                                style={{
-                                  width: "100%",
-                                  border: "none",
-                                  textAlign: "center",
-                                  fontWeight: 700,
-                                  background: "transparent",
-                                  color: isOverridden ? "#ca8a04" : "#1e293b",
-                                }}
-                              />
-                              {isOverridden && (
-                                <button
-                                  onClick={() =>
-                                    handleResetRateOverride(colKey)
-                                  }
-                                  style={{
-                                    fontSize: 10,
-                                    color: "#ca8a04",
-                                    background: "none",
-                                    border: "none",
-                                    cursor: "pointer",
-                                    marginTop: 4,
-                                  }}
-                                >
-                                  (Reset Rate)
-                                </button>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="mRow">
-                            <div
-                              className="mValue"
-                              style={{
-                                ...valueBoxStyle,
-                                background: "#fefce8",
-                                padding: "4px 10px",
-                                border: isFeeOverridden
-                                  ? "1px solid #fde047"
-                                  : "1px solid #e2e8f0",
-                                display: "flex",
-                                flexDirection: "column",
-                                alignItems: "center",
-                                justifyContent: "center",
-                              }}
-                            >
-                              <input
-                                type="text"
-                                value={feeDisplayValue}
-                                onChange={(e) =>
-                                  handleFeeInputChange(colKey, e.target.value)
-                                }
-                                onBlur={(e) =>
-                                  handleFeeInputBlur(
-                                    colKey,
-                                    e.target.value,
-                                    defaultFeePctDec
-                                  )
-                                }
-                                placeholder={`${(
-                                  defaultFeePctDec * 100
-                                ).toFixed(2)}%`}
-                                style={{
-                                  width: "100%",
-                                  border: "none",
-                                  textAlign: "center",
-                                  fontWeight: 700,
-                                  background: "transparent",
-                                  color: isFeeOverridden
-                                    ? "#ca8a04"
-                                    : "#1e293b",
-                                }}
-                              />
-                              {isFeeOverridden && (
-                                <button
-                                  onClick={() => handleResetFeeOverride(colKey)}
-                                  style={{
-                                    fontSize: 10,
-                                    color: "#ca8a04",
-                                    background: "none",
-                                    border: "none",
-                                    cursor: "pointer",
-                                    marginTop: 4,
-                                  }}
-                                >
-                                  (Reset Fee)
-                                </button>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="mRow">
-                            <div className="mValue" style={valueBoxStyle}>
-                              {data.payRateText}
-                            </div>
-                          </div>
-
-                          <div className="mRow">
-                            <div className="mValue" style={valueBoxStyle}>
-                              <span style={{ fontWeight: 700 }}>
-                                {fmtMoney0(data.net)}
-                              </span>
-                              {data.netLtv != null && (
-                                <span style={{ fontWeight: 400 }}>
-                                  {" "}
-                                  @ {Math.round(data.netLtv * 100)}% LTV
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="mRow">
-                            <div className="mValue" style={valueBoxStyle}>
-                              <span style={{ fontWeight: 700 }}>
-                                {fmtMoney0(data.gross)}
-                              </span>
-                              {data.ltv != null && (
-                                <span style={{ fontWeight: 400 }}>
-                                  {" "}
-                                  @ {Math.round(data.ltv * 100)}% LTV
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Rolled Months (hide for Core) */}
-                          <div
-                            className="mRow"
-                            style={{ alignItems: "center" }}
-                          >
-                            {showCoreNA ? (
-                              <div className="mValue" style={valueBoxStyle}>
-                                —
-                              </div>
-                            ) : (
-                              <div
-                                style={{
-                                  width: "100%",
-                                  background:
-                                    manual?.rolledMonths != null
-                                      ? "#fefce8"
-                                      : "#fff",
-                                  borderRadius: 8,
-                                  padding: "1px 1px",
-                                  marginTop: 4,
-                                  marginBottom: 4,
-                                }}
-                              >
-                                <SliderInput
-                                  label=""
-                                  min={0}
-                                  max={Math.min(
-                                    MAX_ROLLED_MONTHS,
-                                    data.termMonths
-                                  )}
-                                  step={1}
-                                  value={
-                                    manual?.rolledMonths ?? data.rolledMonths
-                                  }
-                                  onChange={(val) =>
-                                    handleRolledChange(colKey, val)
-                                  }
-                                  formatValue={(v) => `${v} months`}
-                                  style={{ margin: "4px 0" }}
-                                />
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Deferred (hide for Core) */}
-                          <div
-                            className="mRow"
-                            style={{ alignItems: "center" }}
-                          >
-                            {showCoreNA ? (
-                              <div className="mValue" style={valueBoxStyle}>
-                                —
-                              </div>
-                            ) : (
-                              <div
-                                style={{
-                                  width: "100%",
-                                  background:
-                                    manual?.deferredPct != null
-                                      ? "#fefce8"
-                                      : "#fff",
-                                  borderRadius: 8,
-                                  padding: "1px 1px",
-                                  marginTop: 4,
-                                  marginBottom: 4,
-                                }}
-                              >
-                                <SliderInput
-                                  label=""
-                                  min={0}
-                                  max={deferredCap}
-                                  step={0.0001}
-                                  value={
-                                    manual?.deferredPct ?? data.deferredCapPct
-                                  }
-                                  onChange={(val) =>
-                                    handleDeferredChange(colKey, val)
-                                  }
-                                  formatValue={(v) => fmtPct(v, 2)}
-                                  style={{ margin: "4px 0" }}
-                                />
-                                {(manual?.rolledMonths != null ||
-                                  manual?.deferredPct != null) && (
-                                  <button
-                                    onClick={() => handleResetManual(colKey)}
-                                    style={{
-                                      fontSize: 10,
-                                      color: "#ca8a04",
-                                      background: "none",
-                                      border: "none",
-                                      cursor: "pointer",
-                                      marginTop: 4,
-                                      alignSelf: "end",
-                                      display: "block",
-                                      width: "100%",
-                                      textAlign: "right",
-                                    }}
-                                  >
-                                    (Reset to Optimum)
-                                  </button>
-                                )}
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="mRow">
-                            <div className="mValue" style={valueBoxStyle}>
-                              {fmtMoney0(data.feeAmt)} (
-                              {(feeOverrides[colKey] != null
-                                ? Number(feeOverrides[colKey])
-                                : Number(colKey)
-                              ).toFixed(2)}
-                              %)
-                            </div>
-                          </div>
-                          <div className="mRow">
-                            <div className="mValue" style={valueBoxStyle}>
-                              {showCoreNA
-                                ? "—"
-                                : `${fmtMoney0(data.rolled)} (${
-                                    data.rolledMonths
-                                  } months)`}
-                            </div>
-                          </div>
-                          <div className="mRow">
-                            <div className="mValue" style={valueBoxStyle}>
-                              {showCoreNA
-                                ? "—"
-                                : `${fmtMoney0(data.deferred)} (${(
-                                    data.deferredCapPct * 100
-                                  ).toFixed(2)}%)`}
-                            </div>
-                          </div>
-                          <div className="mRow">
-                            <div className="mValue" style={valueBoxStyle}>
-                              {fmtMoney0(data.procFeeValue)}
-                            </div>
-                          </div>
-
-                          <div className="mRow">
-                            <div className="mValue" style={valueBoxStyle}>
-                              {fmtMoney0(data.brokerFeeValue)}
-                            </div>
-                          </div>
-
-                          <div className="mRow">
-                            <div className="mValue" style={valueBoxStyle}>
-                              {fmtMoney0(data.directDebit)} from month{" "}
-                              {data.ddStartMonth}
-                            </div>
-                          </div>
-                          <div className="mRow">
-                            <div className="mValue" style={valueBoxStyle}>
-                              MVR
-                            </div>
-                          </div>
-                          <div className="mRow">
-                            <div className="mValue" style={valueBoxStyle}>
-                              {TOTAL_TERM} years |{" "}
-                              {productType.includes("2yr")
-                                ? "3% in year 1, 2% in year 2"
-                                : productType.includes("3yr")
-                                ? "3% in year 1, 2% in year 2, 1% in year 3"
-                                : "Refer to product terms"}
-                            </div>
-                          </div>
-                          <div className="mRow">
-                            <div className="mValue" style={valueBoxStyle}>
-                              {(data.maxLtvRule * 100).toFixed(0)}%
-                            </div>
-                          </div>
+                          {content}
                         </div>
-                      );
-                    })}
-                  </>
-                );
-              })()}
+                      </div>
+                    );
+                  })}
+                </React.Fragment>
+              ))}
+
+              {/* MVR/BBR Footer */}
+              <div
+                className="finalMatrixRow"
+                style={{ gridRow: matrixLabels.length + 3 }} // After the last data row (17 rows)
+              >
+                
+              </div>
             </div>
           </div>
         )}
@@ -1805,7 +1784,7 @@
               loan, unless manually overridden.
             </div>
 
-            <div className="matrix" style={{ rowGap: 0 }}>
+            <div className="matrix basicGrossMatrix" style={{ rowGap: 0 }}>
               <div
                 className="matrixLabels"
                 style={{

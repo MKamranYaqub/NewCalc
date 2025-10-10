@@ -1,71 +1,261 @@
-<!-- index.html (updated for BTL Core toggle support) -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>BTL Rate Matrix</title>
-<style>
-:root {
---bg: #f1f5f9;
---card: #fff;
---text: #0f172a;
---border: #e2e8f0;
---accent: #334155;
---danger: #b91c1c;
---input-border: #cbd5e1;
---input-focus: #60a5fa;
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BTL Rate Matrix</title>
+
+  <style>
+  :root {
+    --bg: #f1f5f9;
+    --card: #ffffff;
+    --text: #0f172a;
+    --border: #e2e3e4; /* darker neutral border */
+    --accent: #334155;
+    --input-border: #cbd5e1;
+    --input-focus: #60a5fa;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Noto Sans;
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  .container {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+    padding: 24px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    padding: 16px;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 12px;
+  }
+
+  .field > label {
+    font-size: 12px;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+
+  select, input[type="number"], input[type="text"] {
+    width: 100%;
+    height: 36px;
+    padding: 6px 10px;
+    border: 1px solid var(--input-border);
+    border-radius: 6px;
+    background: #fff;
+    font-size: 14px;
+  }
+
+  select:focus, input:focus {
+    border-color: var(--input-focus);
+    box-shadow: 0 0 0 2px #bae6fd;
+    outline: none;
+  }
+
+  .profile-grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(4, minmax(220px, 1fr));
+  }
+
+  @media (max-width: 1024px){
+    .profile-grid{ grid-template-columns: 1fr; }
+  }
+
+  /* ------------------- TABLE-LIKE MATRIX ------------------- */
+  
+.matrix {
+  display: grid;
+  grid-template-columns: 220px repeat(auto-fit, minmax(220px, 1fr));
+  align-items: stretch;
+  border: 1px solid var(--border);
+  border-radius: 12px; /* ✅ Adds rounded corners to the outer matrix */
+  overflow: hidden; /* ✅ Keeps content inside the rounded corners */
+  margin-top: 12px;
+  background: #fff;
 }
-* { box-sizing: border-box; }
-body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Noto Sans; background: var(--bg); color: var(--text); }
-.container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; padding: 24px; min-height: 100vh; max-width: 1200px; margin: 0 auto; }
-.card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); padding: 16px; position: relative; }
-.field { display: flex; flex-direction: column; margin-bottom: 12px; }
-.field > label { font-size: 12px; color: var(--accent); margin-bottom: 6px; }
-select, input[type="number"], input[type="text"], input[type="email"], input[type="tel"] { width: 100%; height: 38px; padding: 8px 10px; border: 1px solid var(--input-border); border-radius: 8px; background: #fff; font-size: 14px; outline: none; }
-select:focus, input[type="number"]:focus, input[type="text"]:focus, input[type="email"]:focus, input[type="tel"]:focus { border-color: var(--input-focus); box-shadow: 0 0 0 3px #94ecf2; }
+  /* Header row */
+  .matrix .matrixHead {
+    padding: 8px 10px;
+    font-weight: 800;
+    text-align: center;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    font-size: 14px;
+    border: 1px solid var(--border);
+  }
+
+  .headGreen { background: #008891; }
+  .headOrange { background: #ED8B00; }
+  .headTeal { background: #902057; }
+  .headBlue { background: #0284c7; }
+
+  /* Labels and columns */
+  .matrix .matrixLabels,
+  .matrix .matrixCol {
+    display: grid;
+    grid-auto-rows: 40px;
+    border: 1px solid var(--border);
+    border-color: #eaeaec;
+  }
+
+  /* Each row */
+  .matrix .mRow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1px 1px;
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    border-color: #dcdcdd;
+    box-sizing: border-box;
+  }
+
+  .matrix .mRow:last-child {
+    border-bottom: none;
+  }
+
+  .mRow.matrixLabelsRow,
+.matrix .matrixLabels .mRow {
+  justify-content: flex-start;
+  font-weight: 400;          /* adjust thickness */
+  color: #1e293b;            /* text color */
+  font-size: 14px;           /* label font size */
+  letter-spacing: 0.2px;     /* optional spacing for clarity */
+  background: #f7f6f6;       /* label background color */
+  text-transform: capitalize; /* optional: makes first letters uppercase */
+  font-family: "Segoe UI", Roboto, sans-serif; /* optional custom font */
+}
 
 
-.profile-grid { display: grid; gap: 16px; grid-template-columns: repeat(4, minmax(220px, 1fr)); }
-@media (max-width: 1024px){ .profile-grid{ grid-template-columns: 1fr; } }
-.profile-grid.property-product{ grid-template-columns: repeat(5, minmax(200px, 1fr)); }
-@media (max-width: 1024px){ .profile-grid.property-product{ grid-template-columns: 1fr; } }
 
+  /* Table cell content */
+  .matrix .mValue {
+    width: 100%;
+    text-align: center;
+    padding: 4px 6px;
+    background: #ffffff;
+    font-size: 14px;
+    font-weight: 400;
+  }
 
-.matrix{ display:grid; grid-template-columns: 200px repeat(auto-fit, minmax(220px, 1fr)); gap:0; }
-.matrix .matrixLabels, .matrix .matrixCol{ display:grid; grid-template-rows: 30px 52px 52px 52px 52px 52px 52px 52px 52px 52px 52px 52px 52px 52px 52px; border:2px solid var(--border); border-radius:12px; overflow:hidden; background:#fff; }
-.matrix .labelsHead{ background:#f8fafc; border-bottom:1px solid var(--border); }
-.matrix .matrixHead{ padding:10px 12px; font-weight:800; color:#fff; text-align:center; text-transform:uppercase; letter-spacing:.02em; font-size:14px; display:flex; align-items:center; justify-content:center; border-bottom:1px solid rgba(0,0,0,.05); }
-.headGreen{ background:#008891; } .headOrange{ background:#ED8B00; } .headTeal{ background:#902057; } .headBlue{ background:#0284c7; }
-.matrix .mRow{ display:flex; align-items:center; padding:10px 12px; border-bottom:1px solid var(--border); }
-.matrix .mRow:last-child{ border-bottom:0; }
-.matrix .matrixLabels .mRow{ background:#f8fafc; font-size:15px; font-weight:700; color:var(--accent); }
-.matrix .matrixCol .mRow{ justify-content:flex-end; }
-.matrix .mValue{ width:100%; text-align:center; font-weight:400; background:#ffffff; border-radius:8px; padding:8px 10px; }
+  .matrix .mValue input,
+  .matrix .mValue button {
+    min-height: 20px;
+  }
 
+  /* Buttons & toggles */
+  .primaryBtn {
+    height: 36px;
+    border-radius: 8px;
+    border: 1px solid #008891;
+    background: #008891;
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .primaryBtn:hover { background: #2DB0B9; border-color: #2DB0B9; }
+  .segToggle {
+    display: inline-flex;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .segToggle button {
+    padding: 6px 12px;
+    border: 0;
+    background: #fff;
+    cursor: pointer;
+    font-weight: 700;
+  }
+  .segToggle button.active { background: #008891; color: #fff; }
 
-.primaryBtn{ width:100%; height:38px; padding:0 12px; border-radius:8px; border:1px solid #008891; background:#008891; color:#fff; font-weight:700; cursor:pointer; transition: background-color .2s, border-color .2s, box-shadow .15s, transform .15s; }
-.primaryBtn:hover{ background:#2DB0B9; border-color:#2DB0B9; box-shadow:0 6px 14px rgba(0,136,145,.25); transform: translateY(-1px); }
-.primaryBtn:active{ transform: translateY(0); box-shadow:0 3px 8px rgba(0,136,145,.2); }
-.primaryBtn:focus-visible{ outline:3px solid #94ECF2; outline-offset:2px; }
+  /* --- Mobile-Friendly Card View for Matrix --- */
+@media (max-width: 900px) {
+  .matrix {
+    display: block;
+    border: none;
+    background: transparent;
+  }
 
+  .matrixLabels { display: none; }
 
-.toggleWrap{ display:flex; gap:8px; align-items:center; }
-.segToggle{ display:inline-flex; border:1px solid var(--border); border-radius:10px; overflow:hidden; }
-.segToggle button{ padding:6px 12px; border:0; background:#fff; cursor:pointer; font-weight:700; }
-.segToggle button.active{ background:#008891; color:#fff; }
-</style>
+  .matrixCol {
+    border: 1px solid var(--border);
+    border-radius: 12px;            /* ✅ Rounded corners for each card */
+    margin-bottom: 20px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1); /* soft depth */
+  }
+
+  .matrixHead {
+    border-radius: 12px 12px 0 0;
+    padding: 14px;
+    text-align: center;
+    font-weight: 800;
+    font-size: 15px;
+    color: #fff;
+  }
+
+  .matrix .mRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .matrix .mRow:last-child {
+    border-bottom: none;
+  }
+
+  .matrix .mRow span:first-child {
+    font-weight: 600;
+    color: #475569;
+    flex: 1;
+  }
+
+  .matrix .mRow span:last-child {
+    text-align: right;
+    flex: 1;
+  }
+}
+
+  </style>
 </head>
+
 <body>
-<div id="root"></div>
-<script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <div id="root"></div>
 
+  <!-- React + Babel -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-<script src="./criteria.js"></script>
-<script src="./rates.js"></script>
-<script type="text/babel" src="./calc.js"></script>
+  <!-- Local JS -->
+  <script src="./criteria.js"></script>
+  <script src="./rates.js"></script>
+  <script type="text/babel" src="./calc.js"></script>
 </body>
 </html>
